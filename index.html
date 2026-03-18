@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Parkindle — El Reto Diario</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <div id="game-wrapper">
+      <header>
+        <div id="header-inner">
+          <h1>🚗 Parkindle</h1>
+          <p class="subtitle">Aparca sin rozar nada · Un nivel nuevo cada día</p>
+        </div>
+        <div id="controls-hint">
+          <kbd>↑↓</kbd> acelerar · <kbd>←→</kbd> girar · <kbd>WASD</kbd> también funciona
+        </div>
+      </header>
+
+      <div id="canvas-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <!-- Modal resultado -->
+        <div id="result-modal" class="hidden">
+          <div id="modal-header">
+            <h2 id="modal-title">¡Aparcado!</h2>
+            <span id="modal-diff" class="diff-badge">FÁCIL</span>
+          </div>
+
+          <p id="modal-desc">Has superado el reto de hoy.</p>
+
+          <div class="stats-row">
+            <div class="stat-box">
+              <span id="streak-count" class="stat-num">0</span>
+              <span class="stat-label">Racha 🔥</span>
+            </div>
+            <div class="stat-box">
+              <div id="history-grid"></div>
+              <span class="stat-label">Últimos 7 días</span>
+            </div>
+          </div>
+
+          <button id="share-btn">Copiar resultado 📋</button>
+
+          <p class="countdown">Próximo nivel en <span id="time-left">--:--:--</span></p>
+
+          <div id="archive-section">
+            <h3>Niveles anteriores</h3>
+            <div id="archive-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
