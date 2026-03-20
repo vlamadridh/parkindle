@@ -1,199 +1,242 @@
 import './style.css';
+import { getLevelForDate, getLevelById, type Level } from './levels';
+import { createCar, updateCar, isParked, type CarState } from './car';
+import {
+    drawFrame, setCrashAngleOffset,
+    createCrashParticles, createWinParticles, updateParticles,
+    type Particle,
+} from './renderer';
 
+// ── Canvas ──────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
-// --- SISTEMA DE FECHAS Y SEMILLA ---
-const todayDate = new Date();
-const dateString = `${todayDate.getDate()}/${todayDate.getMonth() + 1}/${todayDate.getFullYear()}`;
-let dailySeed = todayDate.getFullYear() * 10000 + (todayDate.getMonth() + 1) * 100 + todayDate.getDate();
+// ── Interfaces ───────────────────────────────────────────────────────────────
+interface SavedDay { result: 'won' | 'lost'; levelId: number; attempts: number; }
 
-function random() {
-  const x = Math.sin(dailySeed++) * 10000;
-  return x - Math.floor(x);
-}
+// ── Sistema de fechas ────────────────────────────────────────────────────────
+const today      = new Date();
+const dateKey    = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+const dateString = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
 
-// --- LOCAL STORAGE (GUARDADO) ---
+// ── Estado persistente ───────────────────────────────────────────────────────
+let history: Record<string, SavedDay> = JSON.parse(localStorage.getItem('parkindle_history') || '{}');
 let streak = parseInt(localStorage.getItem('parkindle_streak') || '0');
-const lastPlayed = localStorage.getItem('parkindle_lastPlayed');
-const lastResult = localStorage.getItem('parkindle_lastResult');
 
-// --- ESTADO DEL JUEGO ---
-// Si ya jugó hoy, bloqueamos la pantalla directamente
-let gameState: 'playing' | 'won' | 'lost' = (lastPlayed === dateString) ? (lastResult as 'won' | 'lost') : 'playing';
+// ── Nivel ────────────────────────────────────────────────────────────────────
+const dailyLevel  = getLevelForDate(today);
+let   currentLevel: Level = dailyLevel;
 
-// --- ENTIDADES ---
-const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, s: false, a: false, d: false };
+// ── Estado del juego ─────────────────────────────────────────────────────────
+let gameState: 'playing' | 'won' | 'lost' = history[dateKey]?.result ?? 'playing';
+let attemptCount  = history[dateKey]?.attempts ?? 0;
+let finishTriggered = false;
+let particles: Particle[] = [];
 
-const car = {
-  x: canvas.width / 2, y: canvas.height - 50,
-  width: 24, height: 44,
-  speed: 0, acceleration: 0.1, maxSpeed: 2.5, friction: 0.05,
-  angle: -Math.PI / 2, rotationSpeed: 0.04
-};
+// ── Coche ────────────────────────────────────────────────────────────────────
+let car: CarState = createCar(
+    currentLevel.carStart.x,
+    currentLevel.carStart.y,
+    currentLevel.carStart.angle,
+);
 
-const parkingSpot = {
-  x: 100 + random() * (canvas.width - 200),
-  y: 50 + random() * 200,
-  width: 60, height: 80
-};
+// ── Input ────────────────────────────────────────────────────────────────────
+const keys: Record<string, boolean> = {};
+const GAME_KEYS = new Set([
+    'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+    'w','W','a','A','s','S','d','D',
+]);
 
-const obstacles: { x: number, y: number, width: number, height: number }[] = [];
-for (let i = 0; i < 6; i++) {
-  obstacles.push({
-    x: random() * (canvas.width - 100) + 50,
-    y: random() * (canvas.height / 2) + 80,
-    width: 40 + random() * 60, height: 30 + random() * 40
-  });
-}
+window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (GAME_KEYS.has(e.key)) e.preventDefault();
+    if (e.key === 'r' || e.key === 'R') retryLevel();
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
 
-// --- CONTROLES ---
-window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key as keyof typeof keys] = true; });
-window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key as keyof typeof keys] = false; });
+// ── Delta time ───────────────────────────────────────────────────────────────
+let lastTime = performance.now();
 
-// --- LÓGICA DE ACTUALIZACIÓN ---
-function update() {
-  if (gameState !== 'playing') {
-    showModal();
-    return;
-  }
+// ── Game loop ─────────────────────────────────────────────────────────────────
+function gameLoop(timestamp: number) {
+    const dt = Math.min((timestamp - lastTime) / (1000 / 60), 3); // normalizado a 60fps, capped
+    lastTime = timestamp;
 
-  // Físicas
-  if (keys.ArrowUp || keys.w) car.speed += car.acceleration;
-  if (keys.ArrowDown || keys.s) car.speed -= car.acceleration;
-  if (car.speed > 0) car.speed -= car.friction;
-  if (car.speed < 0) car.speed += car.friction;
-  if (Math.abs(car.speed) < car.friction) car.speed = 0;
-  car.speed = Math.max(-car.maxSpeed / 2, Math.min(car.speed, car.maxSpeed));
+    if (gameState === 'playing') {
+        const result = updateCar(
+            car, keys, dt,
+            canvas.width, canvas.height,
+            currentLevel.walls,
+            currentLevel.parkedCars,
+        );
 
-  if (car.speed !== 0) {
-    const direction = car.speed > 0 ? 1 : -1;
-    if (keys.ArrowLeft || keys.a) car.angle -= car.rotationSpeed * direction;
-    if (keys.ArrowRight || keys.d) car.angle += car.rotationSpeed * direction;
-  }
-
-  car.x += Math.cos(car.angle) * car.speed;
-  car.y += Math.sin(car.angle) * car.speed;
-
-  // Colisiones con bordes
-  const margen = car.height / 2;
-  if (car.x < margen || car.x > canvas.width - margen || car.y < margen || car.y > canvas.height - margen) {
-    endGame('lost');
-  }
-
-  const carLeft = car.x - car.width / 2;
-  const carRight = car.x + car.width / 2;
-  const carTop = car.y - car.height / 2;
-  const carBottom = car.y + car.height / 2;
-
-  // Colisiones con obstáculos
-  obstacles.forEach(obs => {
-    if (carRight > obs.x && carLeft < obs.x + obs.width && carBottom > obs.y && carTop < obs.y + obs.height) {
-      endGame('lost');
+        if (result === 'crashed') {
+            // Offset visual aleatorio al chocar
+            setCrashAngleOffset((Math.random() - 0.5) * 0.4);
+            particles = createCrashParticles(car.x, car.y);
+            endGame('lost');
+        } else if (isParked(car, currentLevel.parkingSpot)) {
+            particles = createWinParticles(car.x, car.y);
+            endGame('won');
+        }
     }
-  });
 
-  // Condición de Victoria
-  if (carLeft > parkingSpot.x && carRight < parkingSpot.x + parkingSpot.width &&
-    carTop > parkingSpot.y && carBottom < parkingSpot.y + parkingSpot.height) {
-    if (Math.abs(car.speed) < 0.1) endGame('won');
-  }
+    // Actualizar partículas siempre (siguen animándose tras el fin)
+    particles = updateParticles(particles, dt);
+
+    drawFrame(ctx, canvas, currentLevel, car, gameState, particles);
+    requestAnimationFrame(gameLoop);
 }
 
-// --- FIN DEL JUEGO Y GUARDADO ---
+requestAnimationFrame(t => { lastTime = t; requestAnimationFrame(gameLoop); });
+
+// ── Fin del juego ─────────────────────────────────────────────────────────────
 function endGame(result: 'won' | 'lost') {
-  gameState = result;
-  localStorage.setItem('parkindle_lastPlayed', dateString);
-  localStorage.setItem('parkindle_lastResult', result);
+    if (finishTriggered) return;
+    finishTriggered = true;
+    gameState = result;
 
-  if (result === 'won') {
-    streak++;
-    localStorage.setItem('parkindle_streak', streak.toString());
-  } else {
-    streak = 0;
-    localStorage.setItem('parkindle_streak', '0');
-  }
-  showModal();
+    if (currentLevel.id === dailyLevel.id) {
+        if (result === 'won') {
+            streak++;
+        } else {
+            streak = 0;
+        }
+        attemptCount++;
+        history[dateKey] = { result, levelId: currentLevel.id, attempts: attemptCount };
+        localStorage.setItem('parkindle_history', JSON.stringify(history));
+        localStorage.setItem('parkindle_streak', streak.toString());
+    }
+
+    setTimeout(() => showModal(result), 800);
 }
 
-// --- INTERFAZ (MODAL Y COMPARTIR) ---
-function showModal() {
-  const modal = document.getElementById('result-modal')!;
-  const title = document.getElementById('modal-title')!;
-  const desc = document.getElementById('modal-desc')!;
-  const streakSpan = document.getElementById('streak-count')!;
-
-  modal.classList.remove('hidden');
-  streakSpan.innerText = streak.toString();
-
-  if (gameState === 'won') {
-    title.innerText = '¡Aparcado!';
-    title.className = 'win-text';
-    desc.innerText = 'Aparcamiento perfecto. Eres un as del volante.';
-  } else {
-    title.innerText = '¡Choque!';
-    title.className = 'lose-text';
-    desc.innerText = 'Has rayado la pintura. Toca pagar el seguro.';
-  }
-
-  updateCountdown();
+function retryLevel() {
+    if (gameState === 'won' && currentLevel.id === dailyLevel.id) return;
+    attemptCount++;
+    car = createCar(currentLevel.carStart.x, currentLevel.carStart.y, currentLevel.carStart.angle);
+    gameState = 'playing';
+    finishTriggered = false;
+    particles = [];
+    setCrashAngleOffset(0);
+    document.getElementById('result-modal')?.classList.add('hidden');
 }
 
-// Lógica de Compartir
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function showModal(result: 'won' | 'lost') {
+    const modal = document.getElementById('result-modal');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+
+    const title        = document.getElementById('modal-title');
+    const desc         = document.getElementById('modal-desc');
+    const streakSpan   = document.getElementById('streak-count');
+    const attemptsSpan = document.getElementById('attempts-count');
+    const diffBadge    = document.getElementById('modal-diff');
+    const retryBtn     = document.getElementById('retry-btn');
+
+    if (streakSpan)   streakSpan.innerText   = streak.toString();
+    if (attemptsSpan) attemptsSpan.innerText = attemptCount.toString();
+    if (diffBadge)    diffBadge.innerText    = currentLevel.difficulty.toUpperCase();
+
+    if (result === 'won') {
+        if (title)    title.innerText = '¡Aparcado! 🎉';
+        if (desc)     desc.innerText  = 'Perfecto. Eres un maestro del volante.';
+        if (retryBtn) retryBtn.classList.add('hidden');
+        if (title)    title.className = 'win-text';
+    } else {
+        if (title)    title.innerText = '¡Choque! 💥';
+        if (desc)     desc.innerText  = 'Has rayado la pintura. Toca pagar el seguro.';
+        if (retryBtn) retryBtn.classList.remove('hidden');
+        if (title)    title.className = 'lose-text';
+    }
+
+    renderArchive();
+    renderHistoryGrid();
+    updateCountdown();
+}
+
+// ── Historial de última semana (mini grid) ───────────────────────────────────
+function renderHistoryGrid() {
+    const grid = document.getElementById('history-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    for (let i = 6; i >= 0; i--) {
+        const d    = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key  = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+        const day  = history[key];
+        const box  = document.createElement('div');
+        box.className = 'history-dot';
+        box.style.background = day
+            ? (day.result === 'won' ? '#2ecc71' : '#e74c3c')
+            : '#444';
+        box.title = key;
+        grid.appendChild(box);
+    }
+}
+
+// ── Archivo de niveles anteriores ─────────────────────────────────────────────
+function renderArchive() {
+    const list = document.getElementById('archive-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    // Muestra los últimos 7 históricos (excluye el nivel de hoy)
+    const entries = Object.entries(history)
+        .filter(([k]) => k !== dateKey)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .slice(0, 7);
+
+    if (entries.length === 0) {
+        list.innerHTML = '<p style="color:#666;font-size:0.85rem;">Sin historial todavía.</p>';
+        return;
+    }
+
+    for (const [key, saved] of entries) {
+        const lvl  = getLevelById(saved.levelId);
+        const emoji = saved.result === 'won' ? '🟩' : '🟥';
+        const row  = document.createElement('div');
+        row.className = 'archive-row';
+        row.innerHTML = `<span>${emoji} ${key}</span><span>${lvl?.name ?? `Nivel ${saved.levelId}`}</span>`;
+        list.appendChild(row);
+    }
+}
+
+// ── Botón compartir ───────────────────────────────────────────────────────────
 document.getElementById('share-btn')?.addEventListener('click', () => {
-  const emoji = gameState === 'won' ? '🟩' : '🟥';
-  const shareText = `🚗 Parkindle - ${dateString}\nResultado: ${emoji}\nRacha: ${streak} 🔥\n\nJuega en: parkindle.com`;
-
-  navigator.clipboard.writeText(shareText).then(() => {
-    const btn = document.getElementById('share-btn')!;
-    btn.innerText = '¡Copiado! ✔️';
-    setTimeout(() => btn.innerText = 'Copiar Resultado 📋', 2000);
-  });
+    const emoji     = gameState === 'won' ? '🟩' : '🟥';
+    const shareText = `🚗 Parkindle - ${dateString}\nResultado: ${emoji}\nIntentos: ${attemptCount} · Racha: ${streak} 🔥\n\nJuega en: parkindle.com`;
+    navigator.clipboard.writeText(shareText).then(() => {
+        const btn = document.getElementById('share-btn')!;
+        const prev = btn.innerText;
+        btn.innerText = '¡Copiado! ✔️';
+        setTimeout(() => btn.innerText = prev, 2000);
+    });
 });
 
-// Reloj hasta mañana
+// ── Reintentar ────────────────────────────────────────────────────────────────
+document.getElementById('retry-btn')?.addEventListener('click', retryLevel);
+
+// ── Cuenta atrás ─────────────────────────────────────────────────────────────
 function updateCountdown() {
-  const now = new Date();
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  const diff = tomorrow.getTime() - now.getTime();
+    const now      = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const diff     = tomorrow.getTime() - now.getTime();
 
-  const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
-  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
-  const s = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
+    const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+    const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+    const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
 
-  const timeSpan = document.getElementById('time-left');
-  if (timeSpan) timeSpan.innerText = `${h}:${m}:${s}`;
+    const timeSpan = document.getElementById('time-left');
+    if (timeSpan) timeSpan.innerText = `${h}:${m}:${s}`;
 
-  setTimeout(updateCountdown, 1000);
+    setTimeout(updateCountdown, 1000);
 }
 
-// --- RENDERIZADO ---
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
-  ctx.strokeStyle = '#2ecc71';
-  ctx.lineWidth = 3;
-  ctx.fillRect(parkingSpot.x, parkingSpot.y, parkingSpot.width, parkingSpot.height);
-  ctx.strokeRect(parkingSpot.x, parkingSpot.y, parkingSpot.width, parkingSpot.height);
-
-  ctx.fillStyle = '#444';
-  obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.width, obs.height));
-
-  ctx.save();
-  ctx.translate(car.x, car.y);
-  ctx.rotate(car.angle);
-  ctx.fillStyle = '#e74c3c';
-  ctx.fillRect(-car.height / 2, -car.width / 2, car.height, car.width);
-  ctx.fillStyle = '#888';
-  ctx.fillRect(car.height / 4, -car.width / 2 + 2, 6, car.width - 4);
-  ctx.restore();
+// Si ya hay un resultado guardado de hoy, mostrar el modal directamente
+if (gameState === 'won' || gameState === 'lost') {
+    const savedResult = gameState;
+    setTimeout(() => showModal(savedResult), 300);
 }
-
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-gameLoop();

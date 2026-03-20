@@ -1,3 +1,9 @@
+:root {
+  --surface2: #1e1e2e;
+  --text: #e0e0e0;
+  --border: rgba(255,255,255,0.12);
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -78,6 +84,23 @@ canvas {
   font-weight: bold;
 }
 
+/* Botón reintentar */
+#retry-btn {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 11px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s, border-color 0.15s;
+}
+#retry-btn:hover { background: #252540; border-color: rgba(255,255,255,0.2); }
+#retry-btn.hidden { display: none; }
+
+/* Botón compartir */
 #share-btn {
   background: #2ecc71;
   color: #000;
@@ -99,3 +122,66 @@ canvas {
   color: #aaa;
   font-size: 0.9rem;
 }
+
+/* Historia (mini grid de 7 días) */
+#history-grid {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.history-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Sección archivo */
+#archive-section {
+  margin-top: 16px;
+  border-top: 1px solid #333;
+  padding-top: 12px;
+  text-align: left;
+}
+
+#archive-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.archive-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #bbb;
+  padding: 3px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+/* Cabecera del modal (título + badge dificultad) */
+#modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+#modal-header #modal-title {
+  margin: 0;
+}
+
+.diff-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #333;
+  color: #aaa;
+  letter-spacing: 0.5px;
+}
