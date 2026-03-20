@@ -20,7 +20,7 @@ const dateKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate(
 const dailyLevel = getLevelForDate(today);
 
 // ── Estado persistente (localStorage) ────────────────────────────────────────
-interface SavedDay { result: 'won' | 'lost'; levelId: number; }
+interface SavedDay { result: 'won' | 'lost'; levelId: number; attempts?: number; }
 
 function loadHistory(): Record<string, SavedDay> {
   try { return JSON.parse(localStorage.getItem('parkindle_history') || '{}'); }
@@ -52,6 +52,8 @@ let gameState: GameState = todaySaved ? todaySaved.result : 'playing';
 let particles: Particle[] = [];
 let lastTime = performance.now();
 let finishTriggered = false;
+let attemptCount = 0;        // maniobras (reinicios) en el nivel actual
+let crashCount = 0;          // choques en el intento actual
 
 // Si ya jugó hoy → mostrar modal inmediatamente
 if (todaySaved) setTimeout(() => showModal(todaySaved.result), 200);
@@ -62,6 +64,7 @@ const GAME_KEYS = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','W
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
   if (GAME_KEYS.has(e.key)) e.preventDefault();
+  if (e.key === 'r' || e.key === 'R') retryLevel();
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 
@@ -75,6 +78,7 @@ function loop(now: number) {
 
     if (result === 'crashed' && !finishTriggered) {
       finishTriggered = true;
+      crashCount++;
       setCrashAngleOffset((Math.random() - 0.5) * 0.2); // ángulo fijo al chocar
       particles = createCrashParticles(car.x, car.y);
       endGame('lost');
@@ -92,13 +96,25 @@ function loop(now: number) {
 }
 requestAnimationFrame(loop);
 
+// ── Reintentar nivel ──────────────────────────────────────────────────────────
+function retryLevel() {
+  if (gameState === 'won') return; // no reiniciar si ya ganó
+  attemptCount++;
+  car = createCar(currentLevel.carStart.x, currentLevel.carStart.y, currentLevel.carStart.angle);
+  gameState = 'playing';
+  particles = [];
+  finishTriggered = false;
+  setCrashAngleOffset(0);
+  document.getElementById('result-modal')!.classList.add('hidden');
+}
+
 // ── Fin de partida ────────────────────────────────────────────────────────────
 function endGame(result: GameState) {
   if (result === 'won' || result === 'lost') {
     gameState = result;
     // Solo guardamos el nivel del día
     if (currentLevel.id === dailyLevel.id) {
-      history[dateKey] = { result, levelId: currentLevel.id };
+      history[dateKey] = { result, levelId: currentLevel.id, attempts: attemptCount + 1 };
       saveHistory(history);
     }
     setTimeout(() => showModal(result), result === 'won' ? 800 : 500);
@@ -113,22 +129,33 @@ function showModal(result: 'won' | 'lost') {
   const diffEl = document.getElementById('modal-diff')!;
   const streakEl = document.getElementById('streak-count')!;
   const histEl = document.getElementById('history-grid')!;
+  const attemptsEl = document.getElementById('attempts-count')!;
+  const retryBtn = document.getElementById('retry-btn')!;
 
   modal.classList.remove('hidden');
 
   const streak = getStreak(history);
   streakEl.innerText = streak.toString();
+  attemptsEl.innerText = (attemptCount + 1).toString();
   diffEl.innerText = currentLevel.difficulty.toUpperCase();
   diffEl.className = `diff-badge diff-${currentLevel.difficulty.replace('í', 'i')}`;
 
   if (result === 'won') {
     title.innerText = '¡Aparcado! 🎉';
     title.className = 'win-text';
-    desc.innerText = 'Perfecto. Eres un maestro del volante.';
+    const msgs = [
+      'Perfecto. Eres un maestro del volante.',
+      '¡Textbook! Sin un rasguño.',
+      'Maniobra impecable. ¡Enhorabuena!',
+      '¡Primera a la primera? Eso sí es nivel.',
+    ];
+    desc.innerText = attemptCount === 0 ? msgs[3] : msgs[Math.floor(Math.random() * 3)];
+    retryBtn.classList.add('hidden');
   } else {
     title.innerText = '¡Choque! 💥';
     title.className = 'lose-text';
-    desc.innerText = 'Has rayado la pintura. Mañana lo intentas de nuevo.';
+    desc.innerText = 'Has rayado la pintura. Pulsa Reintentar o espera al mañana.';
+    retryBtn.classList.remove('hidden');
   }
 
   // Historial visual (últimos 7 días)
@@ -185,9 +212,14 @@ function loadLevel(id: number) {
   gameState = 'playing';
   particles = [];
   finishTriggered = false;
-  setCrashAngleOffset(0); // resetear inclinación del choque anterior
+  attemptCount = 0;
+  crashCount = 0;
+  setCrashAngleOffset(0);
   document.getElementById('result-modal')!.classList.add('hidden');
 }
+
+// ── Reintentar (botón modal) ──────────────────────────────────────────────────
+document.getElementById('retry-btn')?.addEventListener('click', retryLevel);
 
 // ── Compartir ─────────────────────────────────────────────────────────────────
 document.getElementById('share-btn')?.addEventListener('click', () => {

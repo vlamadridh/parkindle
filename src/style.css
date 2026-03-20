@@ -193,6 +193,22 @@ canvas {
   cursor: default;
 }
 
+/* Botón reintentar */
+#retry-btn {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 11px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s, border-color 0.15s;
+}
+#retry-btn:hover { background: #252540; border-color: rgba(255,255,255,0.2); }
+#retry-btn.hidden { display: none; }
+
 /* Botón compartir */
 #share-btn {
   background: var(--green);
