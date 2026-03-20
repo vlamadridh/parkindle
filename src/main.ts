@@ -1,16 +1,5 @@
 import './style.css';
-import { LEVELS, getLevelForDate, getLevelById } from './levels';
-import { createCar, updateCar, isParked } from './car';
-import {
-  drawFrame,
-  createCrashParticles,
-  createWinParticles,
-  updateParticles,
-  setCrashAngleOffset,
-  type Particle,
-} from './renderer';
 
-// ── Canvas ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
@@ -21,30 +10,53 @@ const dailyLevel = getLevelForDate(today);
 
 // ── Estado persistente (localStorage) ────────────────────────────────────────
 interface SavedDay { result: 'won' | 'lost'; levelId: number; attempts?: number; }
+// --- SISTEMA DE FECHAS Y SEMILLA ---
+const todayDate = new Date();
+const dateString = `${todayDate.getDate()}/${todayDate.getMonth() + 1}/${todayDate.getFullYear()}`;
+let dailySeed = todayDate.getFullYear() * 10000 + (todayDate.getMonth() + 1) * 100 + todayDate.getDate();
 
-function loadHistory(): Record<string, SavedDay> {
-  try { return JSON.parse(localStorage.getItem('parkindle_history') || '{}'); }
-  catch { return {}; }
-}
-function saveHistory(h: Record<string, SavedDay>) {
-  localStorage.setItem('parkindle_history', JSON.stringify(h));
-}
-function getStreak(history: Record<string, SavedDay>): number {
-  let streak = 0;
-  const d = new Date(today);
-  while (true) {
-    const k = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-    if (history[k]?.result === 'won') { streak++; d.setDate(d.getDate() - 1); }
-    else break;
-  }
-  return streak;
+function random() {
+  const x = Math.sin(dailySeed++) * 10000;
+  return x - Math.floor(x);
 }
 
-const history = loadHistory();
-const todaySaved = history[dateKey];
+// --- LOCAL STORAGE (GUARDADO) ---
+let streak = parseInt(localStorage.getItem('parkindle_streak') || '0');
+const lastPlayed = localStorage.getItem('parkindle_lastPlayed');
+const lastResult = localStorage.getItem('parkindle_lastResult');
 
-// ── Estado del juego ──────────────────────────────────────────────────────────
-type GameState = 'playing' | 'won' | 'lost';
+// --- ESTADO DEL JUEGO ---
+// Si ya jugó hoy, bloqueamos la pantalla directamente
+let gameState: 'playing' | 'won' | 'lost' = (lastPlayed === dateString) ? (lastResult as 'won' | 'lost') : 'playing';
+
+// --- ENTIDADES ---
+const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, w: false, s: false, a: false, d: false };
+
+const car = {
+  x: canvas.width / 2, y: canvas.height - 50,
+  width: 24, height: 44,
+  speed: 0, acceleration: 0.1, maxSpeed: 2.5, friction: 0.05,
+  angle: -Math.PI / 2, rotationSpeed: 0.04
+};
+
+const parkingSpot = {
+  x: 100 + random() * (canvas.width - 200),
+  y: 50 + random() * 200,
+  width: 60, height: 80
+};
+
+const obstacles: { x: number, y: number, width: number, height: number }[] = [];
+for (let i = 0; i < 6; i++) {
+  obstacles.push({
+    x: random() * (canvas.width - 100) + 50,
+    y: random() * (canvas.height / 2) + 80,
+    width: 40 + random() * 60, height: 30 + random() * 40
+  });
+}
+
+// --- CONTROLES ---
+window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key as keyof typeof keys] = true; });
+window.addEventListener('keyup', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key as keyof typeof keys] = false; });
 
 let currentLevel = dailyLevel;
 let car = createCar(currentLevel.carStart.x, currentLevel.carStart.y, currentLevel.carStart.angle);
@@ -54,9 +66,26 @@ let lastTime = performance.now();
 let finishTriggered = false;
 let attemptCount = 0;        // maniobras (reinicios) en el nivel actual
 let crashCount = 0;          // choques en el intento actual
+// --- LÓGICA DE ACTUALIZACIÓN ---
+function update() {
+  if (gameState !== 'playing') {
+    showModal();
+    return;
+  }
 
-// Si ya jugó hoy → mostrar modal inmediatamente
-if (todaySaved) setTimeout(() => showModal(todaySaved.result), 200);
+  // Físicas
+  if (keys.ArrowUp || keys.w) car.speed += car.acceleration;
+  if (keys.ArrowDown || keys.s) car.speed -= car.acceleration;
+  if (car.speed > 0) car.speed -= car.friction;
+  if (car.speed < 0) car.speed += car.friction;
+  if (Math.abs(car.speed) < car.friction) car.speed = 0;
+  car.speed = Math.max(-car.maxSpeed / 2, Math.min(car.speed, car.maxSpeed));
+
+  if (car.speed !== 0) {
+    const direction = car.speed > 0 ? 1 : -1;
+    if (keys.ArrowLeft || keys.a) car.angle -= car.rotationSpeed * direction;
+    if (keys.ArrowRight || keys.d) car.angle += car.rotationSpeed * direction;
+  }
 
 // ── Teclado ───────────────────────────────────────────────────────────────────
 const keys: Record<string, boolean> = {};
@@ -67,29 +96,44 @@ window.addEventListener('keydown', e => {
   if (e.key === 'r' || e.key === 'R') retryLevel();
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
+  car.x += Math.cos(car.angle) * car.speed;
+  car.y += Math.sin(car.angle) * car.speed;
 
-// ── Game loop ─────────────────────────────────────────────────────────────────
-function loop(now: number) {
-  const dt = Math.min((now - lastTime) / 16.67, 3); // normalizado a 60fps
-  lastTime = now;
+  // Colisiones con bordes
+  const margen = car.height / 2;
+  if (car.x < margen || car.x > canvas.width - margen || car.y < margen || car.y > canvas.height - margen) {
+    endGame('lost');
+  }
 
-  if (gameState === 'playing') {
-    const result = updateCar(car, keys, dt, canvas.width, canvas.height, currentLevel.walls, currentLevel.parkedCars);
+  const carLeft = car.x - car.width / 2;
+  const carRight = car.x + car.width / 2;
+  const carTop = car.y - car.height / 2;
+  const carBottom = car.y + car.height / 2;
 
     if (result === 'crashed' && !finishTriggered) {
       finishTriggered = true;
       crashCount++;
       setCrashAngleOffset((Math.random() - 0.5) * 0.2); // ángulo fijo al chocar
       particles = createCrashParticles(car.x, car.y);
+  // Colisiones con obstáculos
+  obstacles.forEach(obs => {
+    if (carRight > obs.x && carLeft < obs.x + obs.width && carBottom > obs.y && carTop < obs.y + obs.height) {
       endGame('lost');
-    } else if (result === 'ok' && isParked(car, currentLevel.parkingSpot) && !finishTriggered) {
-      finishTriggered = true;
-      particles = createWinParticles(car.x, car.y);
-      endGame('won');
     }
-  }
+  });
 
-  particles = updateParticles(particles, dt);
+  // Condición de Victoria
+  if (carLeft > parkingSpot.x && carRight < parkingSpot.x + parkingSpot.width &&
+    carTop > parkingSpot.y && carBottom < parkingSpot.y + parkingSpot.height) {
+    if (Math.abs(car.speed) < 0.1) endGame('won');
+  }
+}
+
+// --- FIN DEL JUEGO Y GUARDADO ---
+function endGame(result: 'won' | 'lost') {
+  gameState = result;
+  localStorage.setItem('parkindle_lastPlayed', dateString);
+  localStorage.setItem('parkindle_lastResult', result);
 
   drawFrame(ctx, canvas, currentLevel, car, gameState, particles);
   requestAnimationFrame(loop);
@@ -118,11 +162,18 @@ function endGame(result: GameState) {
       saveHistory(history);
     }
     setTimeout(() => showModal(result), result === 'won' ? 800 : 500);
+  if (result === 'won') {
+    streak++;
+    localStorage.setItem('parkindle_streak', streak.toString());
+  } else {
+    streak = 0;
+    localStorage.setItem('parkindle_streak', '0');
   }
+  showModal();
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
-function showModal(result: 'won' | 'lost') {
+// --- INTERFAZ (MODAL Y COMPARTIR) ---
+function showModal() {
   const modal = document.getElementById('result-modal')!;
   const title = document.getElementById('modal-title')!;
   const desc = document.getElementById('modal-desc')!;
@@ -131,8 +182,10 @@ function showModal(result: 'won' | 'lost') {
   const histEl = document.getElementById('history-grid')!;
   const attemptsEl = document.getElementById('attempts-count')!;
   const retryBtn = document.getElementById('retry-btn')!;
+  const streakSpan = document.getElementById('streak-count')!;
 
   modal.classList.remove('hidden');
+  streakSpan.innerText = streak.toString();
 
   const streak = getStreak(history);
   streakEl.innerText = streak.toString();
@@ -151,8 +204,12 @@ function showModal(result: 'won' | 'lost') {
     ];
     desc.innerText = attemptCount === 0 ? msgs[3] : msgs[Math.floor(Math.random() * 3)];
     retryBtn.classList.add('hidden');
+  if (gameState === 'won') {
+    title.innerText = '¡Aparcado!';
+    title.className = 'win-text';
+    desc.innerText = 'Aparcamiento perfecto. Eres un as del volante.';
   } else {
-    title.innerText = '¡Choque! 💥';
+    title.innerText = '¡Choque!';
     title.className = 'lose-text';
     desc.innerText = 'Has rayado la pintura. Pulsa Reintentar o espera al mañana.';
     retryBtn.classList.remove('hidden');
@@ -172,10 +229,9 @@ function showModal(result: 'won' | 'lost') {
     else if (saved.result === 'won') cell.innerHTML = '🟩';
     else cell.innerHTML = '🟥';
     histEl.appendChild(cell);
+    desc.innerText = 'Has rayado la pintura. Toca pagar el seguro.';
   }
 
-  // Botones de niveles anteriores
-  renderArchive();
   updateCountdown();
 }
 
@@ -222,34 +278,61 @@ function loadLevel(id: number) {
 document.getElementById('retry-btn')?.addEventListener('click', retryLevel);
 
 // ── Compartir ─────────────────────────────────────────────────────────────────
+// Lógica de Compartir
 document.getElementById('share-btn')?.addEventListener('click', () => {
-  const streak = getStreak(history);
-  const last7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (6 - i));
-    const k = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-    const s = history[k];
-    return !s ? '⬜' : s.result === 'won' ? '🟩' : '🟥';
-  }).join('');
+  const emoji = gameState === 'won' ? '🟩' : '🟥';
+  const shareText = `🚗 Parkindle - ${dateString}\nResultado: ${emoji}\nRacha: ${streak} 🔥\n\nJuega en: parkindle.com`;
 
-  const text = `🚗 Parkindle — Nivel ${dailyLevel.id}\n${last7}\nRacha: ${streak} 🔥\n\nparkindle.com`;
-  navigator.clipboard.writeText(text).then(() => {
+  navigator.clipboard.writeText(shareText).then(() => {
     const btn = document.getElementById('share-btn')!;
-    const orig = btn.innerText;
     btn.innerText = '¡Copiado! ✔️';
-    setTimeout(() => (btn.innerText = orig), 2000);
+    setTimeout(() => btn.innerText = 'Copiar Resultado 📋', 2000);
   });
 });
 
-// ── Countdown ─────────────────────────────────────────────────────────────────
+// Reloj hasta mañana
 function updateCountdown() {
   const now = new Date();
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const diff = tomorrow.getTime() - now.getTime();
-  const h = Math.floor(diff / 3_600_000).toString().padStart(2, '0');
-  const m = Math.floor((diff % 3_600_000) / 60_000).toString().padStart(2, '0');
-  const s = Math.floor((diff % 60_000) / 1000).toString().padStart(2, '0');
-  const el = document.getElementById('time-left');
-  if (el) el.innerText = `${h}:${m}:${s}`;
+
+  const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+  const s = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
+
+  const timeSpan = document.getElementById('time-left');
+  if (timeSpan) timeSpan.innerText = `${h}:${m}:${s}`;
+
   setTimeout(updateCountdown, 1000);
 }
+
+// --- RENDERIZADO ---
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
+  ctx.strokeStyle = '#2ecc71';
+  ctx.lineWidth = 3;
+  ctx.fillRect(parkingSpot.x, parkingSpot.y, parkingSpot.width, parkingSpot.height);
+  ctx.strokeRect(parkingSpot.x, parkingSpot.y, parkingSpot.width, parkingSpot.height);
+
+  ctx.fillStyle = '#444';
+  obstacles.forEach(obs => ctx.fillRect(obs.x, obs.y, obs.width, obs.height));
+
+  ctx.save();
+  ctx.translate(car.x, car.y);
+  ctx.rotate(car.angle);
+  ctx.fillStyle = '#e74c3c';
+  ctx.fillRect(-car.height / 2, -car.width / 2, car.height, car.width);
+  ctx.fillStyle = '#888';
+  ctx.fillRect(car.height / 4, -car.width / 2 + 2, 6, car.width - 4);
+  ctx.restore();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
