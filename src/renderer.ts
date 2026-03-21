@@ -115,7 +115,7 @@ function drawParkingSpot(
 }
 
 function drawPlayerCar(ctx: CanvasRenderingContext2D, car: CarState) {
-    const wa = (car as any).wheelAngle ?? 0; // ángulo ruedas delanteras
+    const wa = car.wheelAngle; // ángulo ruedas delanteras
 
     ctx.save();
     ctx.translate(car.x, car.y);
@@ -249,6 +249,8 @@ function drawHUD(ctx: CanvasRenderingContext2D, level: Level) {
     const col = diffColors[level.difficulty] ?? '#fff';
 
     ctx.save();
+
+    // Panel superior: nivel + dificultad
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     roundedRect(ctx, 12, 12, 220, 50, 8);
     ctx.fill();
@@ -261,6 +263,25 @@ function drawHUD(ctx: CanvasRenderingContext2D, level: Level) {
     ctx.fillStyle = col;
     ctx.font = '12px "Segoe UI", system-ui, sans-serif';
     ctx.fillText(`● ${level.difficulty.toUpperCase()}`, 22, 36);
+
+    // Panel inferior: pista
+    const canvasH = ctx.canvas.height;
+    const canvasW = ctx.canvas.width;
+    const hintPadX = 16;
+    ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+    const hintW = Math.min(ctx.measureText(level.hint).width + hintPadX * 2, canvasW - 24);
+    const hintX = (canvasW - hintW) / 2;
+    const hintY = canvasH - 36;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    roundedRect(ctx, hintX, hintY, hintW, 24, 6);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.fillText(level.hint, canvasW / 2, hintY + 12);
+    ctx.textAlign = 'left';
 
     ctx.restore();
 }

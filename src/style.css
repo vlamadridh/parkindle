@@ -22,18 +22,46 @@ body {
   width: 100%;
 }
 
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+#header-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 header h1 {
   margin: 0 0 5px 0;
   font-size: 2.5rem;
   letter-spacing: 2px;
 }
 
-header p {
+.subtitle {
   color: #888;
-  margin-bottom: 20px;
+  margin: 0 0 8px 0;
   font-size: 1rem;
 }
 
+#controls-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #666;
+  margin-bottom: 14px;
+}
+
+#controls-hint kbd {
+  display: inline-block;
+  background: #2a2a3a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.78rem;
+  color: #ccc;
+  font-family: monospace;
+}
+
+/* ── Canvas ──────────────────────────────────────────────────────────────────── */
 #canvas-container {
   position: relative;
   display: inline-block;
@@ -47,19 +75,33 @@ canvas {
   display: block;
 }
 
-/* Modal UI */
+/* Animación shake cuando se intenta R en nivel ya ganado */
+@keyframes canvas-shake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-6px); }
+  40%  { transform: translateX(6px); }
+  60%  { transform: translateX(-4px); }
+  80%  { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+canvas.shake {
+  animation: canvas-shake 0.4s ease;
+}
+
+/* ── Modal UI ─────────────────────────────────────────────────────────────────── */
 #result-modal {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(30, 30, 30, 0.95);
-  padding: 40px;
+  background: rgba(20, 20, 30, 0.97);
+  padding: 32px 36px;
   border-radius: 16px;
   border: 1px solid #444;
   box-shadow: 0 20px 50px rgba(0,0,0,0.9);
   text-align: center;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
   width: 300px;
 }
 
@@ -72,19 +114,45 @@ canvas {
   font-size: 2rem;
 }
 
-.win-text { color: #2ecc71; }
+.win-text  { color: #2ecc71; }
 .lose-text { color: #e74c3c; }
 
-.stats {
+/* ── Stats row ──────────────────────────────────────────────────────────────── */
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  gap: 8px;
   margin: 20px 0;
-  padding: 15px;
-  background: #2a2a2a;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  font-weight: bold;
+  padding: 16px 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
 }
 
-/* Botón reintentar */
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 60px;
+}
+
+.stat-num {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Botón reintentar ───────────────────────────────────────────────────────── */
 #retry-btn {
   background: var(--surface2);
   color: var(--text);
@@ -95,12 +163,13 @@ canvas {
   border-radius: 10px;
   cursor: pointer;
   width: 100%;
+  margin-bottom: 8px;
   transition: background 0.15s, border-color 0.15s;
 }
 #retry-btn:hover { background: #252540; border-color: rgba(255,255,255,0.2); }
 #retry-btn.hidden { display: none; }
 
-/* Botón compartir */
+/* ── Botón compartir ────────────────────────────────────────────────────────── */
 #share-btn {
   background: #2ecc71;
   color: #000;
@@ -114,16 +183,17 @@ canvas {
   transition: transform 0.1s, background 0.2s;
 }
 
-#share-btn:hover { background: #27ae60; }
+#share-btn:hover  { background: #27ae60; }
 #share-btn:active { transform: scale(0.95); }
 
+/* ── Countdown ──────────────────────────────────────────────────────────────── */
 .countdown {
   margin-top: 20px;
   color: #aaa;
   font-size: 0.9rem;
 }
 
-/* Historia (mini grid de 7 días) */
+/* ── Historia mini grid ─────────────────────────────────────────────────────── */
 #history-grid {
   display: flex;
   gap: 4px;
@@ -138,7 +208,7 @@ canvas {
   flex-shrink: 0;
 }
 
-/* Sección archivo */
+/* ── Sección archivo ────────────────────────────────────────────────────────── */
 #archive-section {
   margin-top: 16px;
   border-top: 1px solid #333;
@@ -163,7 +233,7 @@ canvas {
   border-bottom: 1px solid #2a2a2a;
 }
 
-/* Cabecera del modal (título + badge dificultad) */
+/* ── Cabecera del modal ─────────────────────────────────────────────────────── */
 #modal-header {
   display: flex;
   align-items: center;
@@ -184,4 +254,5 @@ canvas {
   background: #333;
   color: #aaa;
   letter-spacing: 0.5px;
+  transition: background 0.2s, color 0.2s;
 }

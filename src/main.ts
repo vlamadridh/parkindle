@@ -29,7 +29,7 @@ let   currentLevel: Level = dailyLevel;
 
 // ── Estado del juego ─────────────────────────────────────────────────────────
 let gameState: 'playing' | 'won' | 'lost' = history[dateKey]?.result ?? 'playing';
-let attemptCount  = history[dateKey]?.attempts ?? 0;
+let attemptCount  = history[dateKey]?.attempts ?? 1; // El primer intento es el 1
 let finishTriggered = false;
 let particles: Particle[] = [];
 
@@ -102,7 +102,7 @@ function endGame(result: 'won' | 'lost') {
         } else {
             streak = 0;
         }
-        attemptCount++;
+        // attemptCount ya fue incrementado al inicio del intento (en retryLevel o al arrancar)
         history[dateKey] = { result, levelId: currentLevel.id, attempts: attemptCount };
         localStorage.setItem('parkindle_history', JSON.stringify(history));
         localStorage.setItem('parkindle_streak', streak.toString());
@@ -112,8 +112,19 @@ function endGame(result: 'won' | 'lost') {
 }
 
 function retryLevel() {
-    if (gameState === 'won' && currentLevel.id === dailyLevel.id) return;
+    if (gameState === 'won' && currentLevel.id === dailyLevel.id) {
+        // Feedback visual: el R no funciona si ya ganaste el nivel diario
+        const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+        canvas?.classList.add('shake');
+        setTimeout(() => canvas?.classList.remove('shake'), 400);
+        return;
+    }
     attemptCount++;
+    // Actualizamos el historial con el nuevo intento en progreso
+    if (currentLevel.id === dailyLevel.id) {
+        history[dateKey] = { result: 'lost', levelId: currentLevel.id, attempts: attemptCount };
+        localStorage.setItem('parkindle_history', JSON.stringify(history));
+    }
     car = createCar(currentLevel.carStart.x, currentLevel.carStart.y, currentLevel.carStart.angle);
     gameState = 'playing';
     finishTriggered = false;
@@ -138,7 +149,19 @@ function showModal(result: 'won' | 'lost') {
 
     if (streakSpan)   streakSpan.innerText   = streak.toString();
     if (attemptsSpan) attemptsSpan.innerText = attemptCount.toString();
-    if (diffBadge)    diffBadge.innerText    = currentLevel.difficulty.toUpperCase();
+
+    // Color del badge según dificultad
+    const diffColors: Record<string, string> = {
+        'fácil':   '#00e676',
+        'medio':   '#ffeb3b',
+        'difícil': '#ff9800',
+        'experto': '#f44336',
+    };
+    if (diffBadge) {
+        diffBadge.innerText = currentLevel.difficulty.toUpperCase();
+        diffBadge.style.background = diffColors[currentLevel.difficulty] ?? '#555';
+        diffBadge.style.color = currentLevel.difficulty === 'medio' ? '#000' : '#fff';
+    }
 
     if (result === 'won') {
         if (title)    title.innerText = '¡Aparcado! 🎉';
@@ -219,9 +242,17 @@ document.getElementById('share-btn')?.addEventListener('click', () => {
 // ── Reintentar ────────────────────────────────────────────────────────────────
 document.getElementById('retry-btn')?.addEventListener('click', retryLevel);
 
-// ── Cuenta atrás ─────────────────────────────────────────────────────────────
+// ── Cuenta atrás ──────────────────────────────────────────────────────
 function updateCountdown() {
     const now      = new Date();
+
+    // Si ya cambió el día, recargamos para que cargue el nivel nuevo
+    const nowKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+    if (nowKey !== dateKey) {
+        location.reload();
+        return;
+    }
+
     const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const diff     = tomorrow.getTime() - now.getTime();
 

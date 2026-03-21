@@ -7,8 +7,6 @@ export interface CarState {
     speed: number;       // velocidad escalar (px/frame@60fps)
     wheelAngle: number;  // ángulo de las ruedas delanteras (radianes)
     crashed: boolean;
-    /** @deprecated usa wheelAngle */
-    steer: number;       // alias legacy para compatibilidad
 }
 
 // ── Dimensiones del coche (px) ──────────────────────────────────────────────
@@ -30,7 +28,7 @@ const WHEEL_TURN    = 0.065;        // velocidad de giro del volante (rad/frame)
 const WHEEL_RETURN  = 0.18;         // velocidad de retorno al centro del volante
 
 export function createCar(x: number, y: number, angle: number): CarState {
-    return { x, y, angle, speed: 0, wheelAngle: 0, steer: 0, crashed: false };
+    return { x, y, angle, speed: 0, wheelAngle: 0, crashed: false };
 }
 
 export function updateCar(
@@ -124,7 +122,6 @@ export function updateCar(
     car.x     = newX;
     car.y     = newY;
     car.angle = newAngle;
-    car.steer = car.wheelAngle; // alias legacy
     return 'ok';
 }
 
