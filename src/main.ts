@@ -1,5 +1,5 @@
 import './style.css';
-import { getLevelForDate, getLevelById, type Level } from './levels';
+import { getLevelForDate, getLevelById, DIFFICULTY_COLORS, type Level } from './levels';
 import { createCar, updateCar, isParked, type CarState } from './car';
 import {
     drawFrame, setCrashAngleOffset,
@@ -14,14 +14,14 @@ const ctx = canvas.getContext('2d')!;
 // ── Interfaces ───────────────────────────────────────────────────────────────
 interface SavedDay { result: 'won' | 'lost'; levelId: number; attempts: number; }
 
-// ── Sistema de fechas ────────────────────────────────────────────────────────
+// ── Sistema de fechas (UTC para consistencia entre zonas horarias) ────────────
 const today      = new Date();
-const dateKey    = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-const dateString = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+const dateKey    = `${today.getUTCFullYear()}-${today.getUTCMonth() + 1}-${today.getUTCDate()}`;
+const dateString = `${today.getUTCDate()}/${today.getUTCMonth() + 1}/${today.getUTCFullYear()}`;
 
 // ── Estado persistente ───────────────────────────────────────────────────────
-let history: Record<string, SavedDay> = JSON.parse(localStorage.getItem('parkindle_history') || '{}');
-let streak = parseInt(localStorage.getItem('parkindle_streak') || '0');
+let history: Record<string, SavedDay> = loadHistory();
+let streak = loadStreak();
 
 // ── Nivel ────────────────────────────────────────────────────────────────────
 const dailyLevel  = getLevelForDate(today);
@@ -97,15 +97,11 @@ function endGame(result: 'won' | 'lost') {
     gameState = result;
 
     if (currentLevel.id === dailyLevel.id) {
-        if (result === 'won') {
-            streak++;
-        } else {
-            streak = 0;
-        }
+        streak = result === 'won' ? streak + 1 : 0;
         // attemptCount ya fue incrementado al inicio del intento (en retryLevel o al arrancar)
         history[dateKey] = { result, levelId: currentLevel.id, attempts: attemptCount };
-        localStorage.setItem('parkindle_history', JSON.stringify(history));
-        localStorage.setItem('parkindle_streak', streak.toString());
+        saveHistory();
+        saveStreak();
     }
 
     setTimeout(() => showModal(result), 800);
@@ -114,16 +110,16 @@ function endGame(result: 'won' | 'lost') {
 function retryLevel() {
     if (gameState === 'won' && currentLevel.id === dailyLevel.id) {
         // Feedback visual: el R no funciona si ya ganaste el nivel diario
-        const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-        canvas?.classList.add('shake');
-        setTimeout(() => canvas?.classList.remove('shake'), 400);
+        const c = document.getElementById('gameCanvas') as HTMLCanvasElement;
+        c?.classList.add('shake');
+        setTimeout(() => c?.classList.remove('shake'), 400);
         return;
     }
     attemptCount++;
     // Actualizamos el historial con el nuevo intento en progreso
     if (currentLevel.id === dailyLevel.id) {
         history[dateKey] = { result: 'lost', levelId: currentLevel.id, attempts: attemptCount };
-        localStorage.setItem('parkindle_history', JSON.stringify(history));
+        saveHistory();
     }
     car = createCar(currentLevel.carStart.x, currentLevel.carStart.y, currentLevel.carStart.angle);
     gameState = 'playing';
@@ -150,16 +146,9 @@ function showModal(result: 'won' | 'lost') {
     if (streakSpan)   streakSpan.innerText   = streak.toString();
     if (attemptsSpan) attemptsSpan.innerText = attemptCount.toString();
 
-    // Color del badge según dificultad
-    const diffColors: Record<string, string> = {
-        'fácil':   '#00e676',
-        'medio':   '#ffeb3b',
-        'difícil': '#ff9800',
-        'experto': '#f44336',
-    };
     if (diffBadge) {
         diffBadge.innerText = currentLevel.difficulty.toUpperCase();
-        diffBadge.style.background = diffColors[currentLevel.difficulty] ?? '#555';
+        diffBadge.style.background = DIFFICULTY_COLORS[currentLevel.difficulty] ?? '#555';
         diffBadge.style.color = currentLevel.difficulty === 'medio' ? '#000' : '#fff';
     }
 
@@ -177,7 +166,7 @@ function showModal(result: 'won' | 'lost') {
 
     renderArchive();
     renderHistoryGrid();
-    updateCountdown();
+    startCountdown();
 }
 
 // ── Historial de última semana (mini grid) ───────────────────────────────────
@@ -186,11 +175,10 @@ function renderHistoryGrid() {
     if (!grid) return;
     grid.innerHTML = '';
     for (let i = 6; i >= 0; i--) {
-        const d    = new Date(today);
-        d.setDate(d.getDate() - i);
-        const key  = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-        const day  = history[key];
-        const box  = document.createElement('div');
+        const d   = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+        const key = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
+        const day = history[key];
+        const box = document.createElement('div');
         box.className = 'history-dot';
         box.style.background = day
             ? (day.result === 'won' ? '#2ecc71' : '#e74c3c')
@@ -242,28 +230,86 @@ document.getElementById('share-btn')?.addEventListener('click', () => {
 // ── Reintentar ────────────────────────────────────────────────────────────────
 document.getElementById('retry-btn')?.addEventListener('click', retryLevel);
 
-// ── Cuenta atrás ──────────────────────────────────────────────────────
+// ── Cuenta atrás ──────────────────────────────────────────────────────────────
+let countdownInterval: ReturnType<typeof setInterval> | null = null;
+
 function updateCountdown() {
-    const now      = new Date();
+    const now    = new Date();
+    const nowKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}-${now.getUTCDate()}`;
 
     // Si ya cambió el día, recargamos para que cargue el nivel nuevo
-    const nowKey = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
     if (nowKey !== dateKey) {
+        stopCountdown();
         location.reload();
         return;
     }
 
-    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const diff     = tomorrow.getTime() - now.getTime();
+    const tomorrowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+    const diff        = tomorrowUTC - now.getTime();
 
-    const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
-    const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
-    const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+    const h = Math.floor(diff / 3_600_000).toString().padStart(2, '0');
+    const m = Math.floor((diff % 3_600_000) / 60_000).toString().padStart(2, '0');
+    const s = Math.floor((diff % 60_000) / 1_000).toString().padStart(2, '0');
 
     const timeSpan = document.getElementById('time-left');
     if (timeSpan) timeSpan.innerText = `${h}:${m}:${s}`;
+}
 
-    setTimeout(updateCountdown, 1000);
+function startCountdown() {
+    if (countdownInterval !== null) return; // ya está corriendo
+    updateCountdown();
+    countdownInterval = setInterval(updateCountdown, 1000);
+}
+
+function stopCountdown() {
+    if (countdownInterval !== null) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+}
+
+window.addEventListener('beforeunload', stopCountdown);
+
+// ── Persistencia ─────────────────────────────────────────────────────────────
+function loadHistory(): Record<string, SavedDay> {
+    try {
+        const raw = localStorage.getItem('parkindle_history');
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+        const valid: Record<string, SavedDay> = {};
+        for (const [key, val] of Object.entries(parsed)) {
+            const v = val as Record<string, unknown>;
+            if (
+                typeof v === 'object' && v !== null &&
+                (v.result === 'won' || v.result === 'lost') &&
+                typeof v.levelId === 'number' &&
+                typeof v.attempts === 'number'
+            ) {
+                valid[key] = v as unknown as SavedDay;
+            }
+        }
+        return valid;
+    } catch {
+        return {};
+    }
+}
+
+function loadStreak(): number {
+    try {
+        const n = parseInt(localStorage.getItem('parkindle_streak') ?? '0', 10);
+        return isNaN(n) || n < 0 ? 0 : n;
+    } catch {
+        return 0;
+    }
+}
+
+function saveHistory() {
+    try { localStorage.setItem('parkindle_history', JSON.stringify(history)); } catch { /* cuota excedida o no disponible */ }
+}
+
+function saveStreak() {
+    try { localStorage.setItem('parkindle_streak', streak.toString()); } catch { /* cuota excedida o no disponible */ }
 }
 
 // Si ya hay un resultado guardado de hoy, mostrar el modal directamente

@@ -1,6 +1,13 @@
 import type { Level } from './levels';
+import { DIFFICULTY_COLORS } from './levels';
 import type { CarState } from './car';
 import { CAR_W, CAR_H } from './car';
+
+// ── Constantes de render ─────────────────────────────────────────────────────
+const GRID_CELL_SIZE        = 40;   // px entre líneas de la rejilla
+const SPOT_PULSE_PERIOD     = 400;  // ms por ciclo del pulso de la plaza
+const CRASH_PARTICLE_COUNT  = 22;
+const WIN_PARTICLE_COUNT    = 30;
 
 const ASPHALT = '#1a1a2e';
 const LANE_MARK = 'rgba(255,255,255,0.18)';
@@ -25,10 +32,10 @@ export function drawFrame(
     // Rejilla sutil
     ctx.strokeStyle = 'rgba(255,255,255,0.03)';
     ctx.lineWidth = 1;
-    for (let x = 0; x < W; x += 40) {
+    for (let x = 0; x < W; x += GRID_CELL_SIZE) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
     }
-    for (let y = 0; y < H; y += 40) {
+    for (let y = 0; y < H; y += GRID_CELL_SIZE) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
 
@@ -87,7 +94,7 @@ function drawParkingSpot(
     const hw = spot.w / 2;
     const hh = spot.h / 2;
 
-    const pulse = (Math.sin(Date.now() / 400) + 1) / 2;
+    const pulse = (Math.sin(Date.now() / SPOT_PULSE_PERIOD) + 1) / 2;
     const alpha = state === 'playing' ? 0.15 + pulse * 0.1 : 0.35;
 
     if (state === 'won') ctx.fillStyle = `rgba(0,255,136,0.4)`;
@@ -240,13 +247,7 @@ function drawStaticCar(
 }
 
 function drawHUD(ctx: CanvasRenderingContext2D, level: Level) {
-    const diffColors: Record<string, string> = {
-        'fácil': '#00e676',
-        'medio': '#ffeb3b',
-        'difícil': '#ff9800',
-        'experto': '#f44336',
-    };
-    const col = diffColors[level.difficulty] ?? '#fff';
+    const col = DIFFICULTY_COLORS[level.difficulty] ?? '#fff';
 
     ctx.save();
 
@@ -297,7 +298,7 @@ export interface Particle {
 
 export function createCrashParticles(x: number, y: number): Particle[] {
     const p: Particle[] = [];
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < CRASH_PARTICLE_COUNT; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = 1 + Math.random() * 4;
         p.push({
@@ -314,7 +315,7 @@ export function createCrashParticles(x: number, y: number): Particle[] {
 
 export function createWinParticles(x: number, y: number): Particle[] {
     const p: Particle[] = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < WIN_PARTICLE_COUNT; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = 0.5 + Math.random() * 3;
         p.push({
