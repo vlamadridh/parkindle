@@ -62,7 +62,7 @@ export function drawFrame(
     // Coches aparcados
     level.parkedCars.forEach((pc, i) => {
         const col = PARKED_COLORS[i % PARKED_COLORS.length];
-        drawStaticCar(ctx, pc.x + pc.w / 2, pc.y + pc.h / 2, -Math.PI / 2, col);
+        drawStaticCar(ctx, pc.x + pc.w / 2, pc.y + pc.h / 2, -Math.PI / 2, col, pc.w, pc.h);
     });
 
     // Plaza de aparcamiento
@@ -223,25 +223,29 @@ function drawStaticCar(
     cx: number, cy: number,
     angle: number,
     color: string,
+    w: number = CAR_W,
+    h: number = CAR_H,
 ) {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(angle + Math.PI / 2);
 
-    const hw = CAR_W / 2;
-    const hh = CAR_H / 2;
+    const hw = w / 2;
+    const hh = h / 2;
+    const sx = w / CAR_W;
+    const sy = h / CAR_H;
 
     ctx.fillStyle = color;
-    roundedRect(ctx, -hw, -hh, CAR_W, CAR_H, 4);
+    roundedRect(ctx, -hw, -hh, w, h, 4 * Math.min(sx, sy));
     ctx.fill();
 
     ctx.fillStyle = 'rgba(100,160,220,0.4)';
-    roundedRect(ctx, -hw + 3, -hh + 8, CAR_W - 6, 10, 2);
+    roundedRect(ctx, -hw + 3 * sx, -hh + 8 * sy, (CAR_W - 6) * sx, 10 * sy, 2);
     ctx.fill();
 
     ctx.fillStyle = 'rgba(255,250,200,0.7)';
-    ctx.fillRect(-hw + 1, -hh + 1, 5, 3);
-    ctx.fillRect(hw - 6, -hh + 1, 5, 3);
+    ctx.fillRect(-hw + 1, -hh + 1, 5 * sx, 3 * sy);
+    ctx.fillRect(hw - 6 * sx, -hh + 1, 5 * sx, 3 * sy);
 
     ctx.restore();
 }

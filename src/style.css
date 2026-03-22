@@ -61,6 +61,31 @@ header h1 {
   font-family: monospace;
 }
 
+/* ── Selector de niveles ─────────────────────────────────────────────────────── */
+#level-selector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+#level-select {
+  background: #1e1e2e;
+  color: #ccc;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#level-select:hover {
+  border-color: rgba(255,255,255,0.25);
+}
+
 /* ── Canvas ──────────────────────────────────────────────────────────────────── */
 #canvas-container {
   position: relative;

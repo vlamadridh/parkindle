@@ -1,5 +1,5 @@
 import './style.css';
-import { getLevelForDate, getLevelById, DIFFICULTY_COLORS, type Level } from './levels';
+import { getLevelForDate, getLevelById, DIFFICULTY_COLORS, LEVELS, type Level } from './levels';
 import { createCar, updateCar, isParked, type CarState } from './car';
 import {
     drawFrame, setCrashAngleOffset,
@@ -155,7 +155,10 @@ function showModal(result: 'won' | 'lost') {
     if (result === 'won') {
         if (title)    title.innerText = '¡Aparcado! 🎉';
         if (desc)     desc.innerText  = 'Perfecto. Eres un maestro del volante.';
-        if (retryBtn) retryBtn.classList.add('hidden');
+        if (retryBtn) {
+            if (currentLevel.id === dailyLevel.id) retryBtn.classList.add('hidden');
+            else retryBtn.classList.remove('hidden');
+        }
         if (title)    title.className = 'win-text';
     } else {
         if (title)    title.innerText = '¡Choque! 💥';
@@ -311,6 +314,38 @@ function saveHistory() {
 function saveStreak() {
     try { localStorage.setItem('parkindle_streak', streak.toString()); } catch { /* cuota excedida o no disponible */ }
 }
+
+// ── Selector de niveles ───────────────────────────────────────────────────────
+function loadLevel(lvl: Level) {
+    currentLevel = lvl;
+    car = createCar(lvl.carStart.x, lvl.carStart.y, lvl.carStart.angle);
+    gameState = 'playing';
+    finishTriggered = false;
+    particles = [];
+    attemptCount = 1;
+    setCrashAngleOffset(0);
+    document.getElementById('result-modal')?.classList.add('hidden');
+}
+
+(function initLevelSelector() {
+    const sel = document.getElementById('level-select') as HTMLSelectElement | null;
+    if (!sel) return;
+
+    const diffLabels: Record<string, string> = { 'fácil': 'F', 'medio': 'M', 'difícil': 'D', 'experto': 'E' };
+    for (const lvl of LEVELS) {
+        const opt = document.createElement('option');
+        opt.value = String(lvl.id);
+        opt.textContent = `[${diffLabels[lvl.difficulty]}] Nv.${lvl.id} — ${lvl.name}`;
+        if (lvl.id === dailyLevel.id) opt.textContent += ' ★';
+        sel.appendChild(opt);
+    }
+    sel.value = String(dailyLevel.id);
+
+    sel.addEventListener('change', () => {
+        const lvl = getLevelById(parseInt(sel.value, 10));
+        if (lvl) loadLevel(lvl);
+    });
+})();
 
 // Si ya hay un resultado guardado de hoy, mostrar el modal directamente
 if (gameState === 'won' || gameState === 'lost') {
