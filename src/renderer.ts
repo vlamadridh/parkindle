@@ -4,10 +4,10 @@ import type { CarState } from './car';
 import { CAR_W, CAR_H, MAX_SPEED } from './car';
 
 // ── Constantes de render ─────────────────────────────────────────────────────
-const GRID_CELL_SIZE        = 40;   // px entre líneas de la rejilla
-const SPOT_PULSE_PERIOD     = 400;  // ms por ciclo del pulso de la plaza
-const CRASH_PARTICLE_COUNT  = 22;
-const WIN_PARTICLE_COUNT    = 30;
+const GRID_CELL_SIZE = 40;   // px entre líneas de la rejilla
+const SPOT_PULSE_PERIOD = 400;  // ms por ciclo del pulso de la plaza
+const CRASH_PARTICLE_COUNT = 22;
+const WIN_PARTICLE_COUNT = 30;
 
 const ASPHALT = '#1a1a2e';
 const LANE_MARK = 'rgba(255,255,255,0.18)';
@@ -174,7 +174,7 @@ function drawPlayerCar(ctx: CanvasRenderingContext2D, car: CarState) {
     // ── Ruedas traseras (fijas) ──
     ctx.fillStyle = '#111';
     ctx.fillRect(-hw - 4, hh - 17, 5, 11);
-    ctx.fillRect(hw - 1,  hh - 17, 5, 11);
+    ctx.fillRect(hw - 1, hh - 17, 5, 11);
 
     // ── Ruedas delanteras (giradas según wheelAngle) ──
     const wheelW = 5;
@@ -254,7 +254,7 @@ function drawHUD(
     ctx: CanvasRenderingContext2D,
     level: Level,
     car: CarState,
-    gameState: 'playing' | 'won' | 'lost',
+    _gameState: 'playing' | 'won' | 'lost',
 ) {
     const col = DIFFICULTY_COLORS[level.difficulty] ?? '#fff';
     const canvasH = ctx.canvas.height;
@@ -278,7 +278,7 @@ function drawHUD(
 
     // Panel superior derecho: velocímetro
     const speedKmh = Math.round(Math.abs(car.speed) / MAX_SPEED * 60);
-    const reverse  = car.speed < -0.05;
+    const reverse = car.speed < -0.05;
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     roundedRect(ctx, canvasW - 100, 12, 88, 50, 8);
     ctx.fill();
