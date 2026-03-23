@@ -1,6 +1,8 @@
 import './style.css';
+import { initAudio, playCrash, playWin } from './audio';
+import { initFeedbackModal } from './feedback';
 import { getLevelForDate, getLevelById, DIFFICULTY_COLORS, LEVELS, type Level, type Rect } from './levels';
-import { createCar, updateCar, isParked, isSpawnSafe, computeParkingScore, HITBOX_W, type CarState } from './car';
+import { createCar, updateCar, isSpawnSafe, isCarInZone, computeParkingScore, HITBOX_W, type CarState, type Transmission } from './car';
 import {
     drawFrame, setCrashAngleOffset,
     createCrashParticles, createWinParticles, updateParticles,
@@ -15,8 +17,8 @@ const ctx = canvas.getContext('2d')!;
 interface SavedDay { result: 'won' | 'lost'; levelId: number; attempts: number; }
 
 // ── Sistema de fechas (UTC para consistencia entre zonas horarias) ────────────
-const today      = new Date();
-const dateKey    = `${today.getUTCFullYear()}-${today.getUTCMonth() + 1}-${today.getUTCDate()}`;
+const today = new Date();
+const dateKey = `${today.getUTCFullYear()}-${today.getUTCMonth() + 1}-${today.getUTCDate()}`;
 const dateString = `${today.getUTCDate()}/${today.getUTCMonth() + 1}/${today.getUTCFullYear()}`;
 
 // ── Estado persistente ───────────────────────────────────────────────────────
@@ -24,15 +26,31 @@ let history: Record<string, SavedDay> = loadHistory();
 let streak = loadStreak();
 
 // ── Nivel ────────────────────────────────────────────────────────────────────
-const dailyLevel  = getLevelForDate(today);
-let   currentLevel: Level = dailyLevel;
+const dailyLevel = getLevelForDate(today);
+let currentLevel: Level = dailyLevel;
 
 // ── Estado del juego ─────────────────────────────────────────────────────────
 let gameState: 'playing' | 'won' | 'lost' = history[dateKey]?.result ?? 'playing';
-let attemptCount  = history[dateKey]?.attempts ?? 1; // El primer intento es el 1
+let attemptCount = history[dateKey]?.attempts ?? 1; // El primer intento es el 1
 let finishTriggered = false;
 let particles: Particle[] = [];
 let lastParkingScore = 0;
+
+// ── Modo de conducción y marchas ──────────────────────────────────────────────
+type DriveMode = 'auto' | 'manual';
+let driveMode: DriveMode = 'auto';
+// Marchas: -1=R, 0=N, 1–5 = marchas delanteras
+let currentGear = 1;
+
+const GEAR_MAX_FWD: Record<number, number> = { 1: 1.0, 2: 1.8, 3: 2.5, 4: 3.0, 5: 3.8 };
+const GEAR_LABELS: Record<number, string> = { [-1]: 'R', [0]: 'N', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5' };
+
+function getTransmission(): Transmission | undefined {
+    if (driveMode === 'auto') return undefined;
+    if (currentGear === -1) return { maxFwd: 0, allowRev: true };
+    if (currentGear === 0) return { maxFwd: 0, allowRev: false };
+    return { maxFwd: GEAR_MAX_FWD[currentGear] ?? 3.0, allowRev: false };
+}
 
 // ── Coche ────────────────────────────────────────────────────────────────────
 // findSafeSpawn se define más abajo, así que usamos carStart directamente aquí;
@@ -46,14 +64,18 @@ let car: CarState = createCar(
 // ── Input ────────────────────────────────────────────────────────────────────
 const keys: Record<string, boolean> = {};
 const GAME_KEYS = new Set([
-    'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
-    'w','W','a','A','s','S','d','D',
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+    'w', 'W', 'a', 'A', 's', 'S', 'd', 'D',
 ]);
 
 window.addEventListener('keydown', e => {
     keys[e.key] = true;
     if (GAME_KEYS.has(e.key)) e.preventDefault();
     if (e.key === 'r' || e.key === 'R') retryLevel();
+    if (gameState === 'playing') {
+        if (e.key === 'e' || e.key === 'E') { currentGear = Math.min(5, currentGear + 1); e.preventDefault(); }
+        if (e.key === 'q' || e.key === 'Q') { currentGear = Math.max(-1, currentGear - 1); e.preventDefault(); }
+    }
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 
@@ -71,28 +93,60 @@ function gameLoop(timestamp: number) {
             canvas.width, canvas.height,
             currentLevel.walls,
             currentLevel.parkedCars,
+            getTransmission(),
         );
 
         if (result === 'crashed') {
             // Offset visual aleatorio al chocar
             setCrashAngleOffset((Math.random() - 0.5) * 0.4);
             particles = createCrashParticles(car.x, car.y);
+            setParkBtnVisible(false);
+            playCrash();
             endGame('lost');
-        } else if (isParked(car, currentLevel.parkingSpot)) {
-            lastParkingScore = computeParkingScore(car, currentLevel.parkingSpot);
-            particles = createWinParticles(car.x, car.y);
-            endGame('won');
+        } else {
+            // Mostrar/ocultar botón APARCAR según si el coche está dentro de la plaza
+            setParkBtnVisible(isCarInZone(car, currentLevel.parkingSpot));
         }
     }
 
     // Actualizar partículas siempre (siguen animándose tras el fin)
     particles = updateParticles(particles, dt);
 
-    drawFrame(ctx, canvas, currentLevel, car, gameState, particles);
+    const gearLabel = driveMode === 'manual' ? GEAR_LABELS[currentGear] : undefined;
+    const inZone = gameState === 'playing' && isCarInZone(car, currentLevel.parkingSpot);
+    const parkingAlignment = inZone ? computeAlignment(car, currentLevel.parkingSpot) : undefined;
+    drawFrame(ctx, canvas, currentLevel, car, gameState, particles, gearLabel, parkingAlignment);
     requestAnimationFrame(gameLoop);
 }
 
 requestAnimationFrame(t => { lastTime = t; requestAnimationFrame(gameLoop); });
+
+// ── Alineación de aparcamiento (0=mal, 1=perfecto) ───────────────────────────
+function computeAlignment(car: CarState, spot: Level['parkingSpot']): number {
+    const expectedAngle = spot.h > spot.w ? spot.angle + Math.PI / 2 : spot.angle;
+    let da = ((car.angle - expectedAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    if (da > Math.PI) da = Math.PI * 2 - da;
+    const angleFrac = Math.min(1, Math.min(da, Math.abs(da - Math.PI)) / 0.50);
+    return 1 - angleFrac;
+}
+
+// ── Botón APARCAR ─────────────────────────────────────────────────────────────
+const parkBtn = document.getElementById('park-btn') as HTMLButtonElement | null;
+
+function setParkBtnVisible(visible: boolean) {
+    if (!parkBtn) return;
+    if (visible) parkBtn.classList.remove('hidden');
+    else parkBtn.classList.add('hidden');
+}
+
+parkBtn?.addEventListener('click', () => {
+    if (gameState !== 'playing' || finishTriggered) return;
+    lastParkingScore = computeParkingScore(car, currentLevel.parkingSpot);
+    particles = createWinParticles(car.x, car.y);
+    setParkBtnVisible(false);
+    playWin();
+    endGame('won');
+});
 
 // ── Fin del juego ─────────────────────────────────────────────────────────────
 function endGame(result: 'won' | 'lost') {
@@ -101,8 +155,14 @@ function endGame(result: 'won' | 'lost') {
     gameState = result;
 
     if (currentLevel.id === dailyLevel.id) {
-        streak = result === 'won' ? streak + 1 : 0;
-        // attemptCount ya fue incrementado al inicio del intento (en retryLevel o al arrancar)
+        if (result === 'won') {
+            // Solo continuar racha si ayer también se ganó
+            const yesterday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - 1));
+            const yk = `${yesterday.getUTCFullYear()}-${yesterday.getUTCMonth() + 1}-${yesterday.getUTCDate()}`;
+            streak = history[yk]?.result === 'won' ? streak + 1 : 1;
+        } else {
+            streak = 0;
+        }
         history[dateKey] = { result, levelId: currentLevel.id, attempts: attemptCount };
         saveHistory();
         saveStreak();
@@ -131,8 +191,29 @@ function retryLevel() {
     finishTriggered = false;
     particles = [];
     lastParkingScore = 0;
+    currentGear = driveMode === 'manual' ? 1 : 1;
     setCrashAngleOffset(0);
+    setParkBtnVisible(false);
     document.getElementById('result-modal')?.classList.add('hidden');
+}
+
+// ── Animación de contador numérico ────────────────────────────────────────────
+function animateCounter(
+    el: HTMLElement,
+    target: number,
+    duration: number,
+    colors?: Record<number, string>,
+) {
+    let current = 0;
+    el.innerText = '0';
+    const steps = 12;
+    const interval = duration / steps;
+    const tick = setInterval(() => {
+        current = Math.min(current + Math.ceil(target / steps), target);
+        el.innerText = String(current);
+        if (colors) el.style.color = colors[current] ?? '#fff';
+        if (current >= target) clearInterval(tick);
+    }, interval);
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
@@ -142,16 +223,16 @@ function showModal(result: 'won' | 'lost') {
 
     modal.classList.remove('hidden');
 
-    const title        = document.getElementById('modal-title');
-    const desc         = document.getElementById('modal-desc');
-    const streakSpan   = document.getElementById('streak-count');
+    const title = document.getElementById('modal-title');
+    const desc = document.getElementById('modal-desc');
+    const streakSpan = document.getElementById('streak-count');
     const attemptsSpan = document.getElementById('attempts-count');
-    const diffBadge    = document.getElementById('modal-diff');
-    const retryBtn     = document.getElementById('retry-btn');
-    const scoreBox     = document.getElementById('score-box');
-    const scoreNum     = document.getElementById('score-num');
+    const diffBadge = document.getElementById('modal-diff');
+    const retryBtn = document.getElementById('retry-btn');
+    const scoreBox = document.getElementById('score-box');
+    const scoreNum = document.getElementById('score-num');
 
-    if (streakSpan)   streakSpan.innerText   = streak.toString();
+    if (streakSpan) streakSpan.innerText = streak.toString();
     if (attemptsSpan) attemptsSpan.innerText = attemptCount.toString();
 
     if (diffBadge) {
@@ -161,34 +242,33 @@ function showModal(result: 'won' | 'lost') {
     }
 
     if (result === 'won') {
-        if (title)    title.innerText = '¡Aparcado! 🎉';
-        if (desc)     desc.innerText  = 'Perfecto. Eres un maestro del volante.';
+        if (title) title.innerText = '¡Aparcado! 🎉';
+        if (desc) desc.innerText = 'Perfecto. Eres un maestro del volante.';
         if (retryBtn) {
             if (currentLevel.id === dailyLevel.id) retryBtn.classList.add('hidden');
             else retryBtn.classList.remove('hidden');
         }
-        if (title)    title.className = 'win-text';
+        if (title) title.className = 'win-text';
 
-        // Puntuación de aparcamiento
+        // Puntuación de aparcamiento (animada)
         if (scoreBox && scoreNum) {
             scoreBox.classList.remove('hidden');
-            scoreNum.innerText = lastParkingScore.toString();
             const scoreColors: Record<number, string> = {
                 10: '#00ff88', 9: '#00e676', 8: '#69f0ae',
                 7: '#ffeb3b', 6: '#ffc107', 5: '#ff9800',
                 4: '#ff7043', 3: '#f44336', 2: '#e53935', 1: '#b71c1c',
             };
-            scoreNum.style.color = scoreColors[lastParkingScore] ?? '#fff';
+            animateCounter(scoreNum, lastParkingScore, 700, scoreColors);
         }
     } else {
         if (scoreBox) scoreBox.classList.add('hidden');
-        if (title)    title.innerText = '¡Choque! 💥';
-        if (desc)     desc.innerText  = 'Has rayado la pintura. Toca pagar el seguro.';
+        if (title) title.innerText = '¡Choque! 💥';
+        if (desc) desc.innerText = 'Has rayado la pintura. Toca pagar el seguro.';
         if (retryBtn) retryBtn.classList.remove('hidden');
-        if (title)    title.className = 'lose-text';
+        if (title) title.className = 'lose-text';
     }
 
-    renderArchive();
+
     renderHistoryGrid();
     startCountdown();
 }
@@ -199,7 +279,7 @@ function renderHistoryGrid() {
     if (!grid) return;
     grid.innerHTML = '';
     for (let i = 6; i >= 0; i--) {
-        const d   = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+        const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
         const key = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
         const day = history[key];
         const box = document.createElement('div');
@@ -212,37 +292,12 @@ function renderHistoryGrid() {
     }
 }
 
-// ── Archivo de niveles anteriores ─────────────────────────────────────────────
-function renderArchive() {
-    const list = document.getElementById('archive-list');
-    if (!list) return;
-    list.innerHTML = '';
-
-    // Muestra los últimos 7 históricos (excluye el nivel de hoy)
-    const entries = Object.entries(history)
-        .filter(([k]) => k !== dateKey)
-        .sort(([a], [b]) => b.localeCompare(a))
-        .slice(0, 7);
-
-    if (entries.length === 0) {
-        list.innerHTML = '<p style="color:#666;font-size:0.85rem;">Sin historial todavía.</p>';
-        return;
-    }
-
-    for (const [key, saved] of entries) {
-        const lvl  = getLevelById(saved.levelId);
-        const emoji = saved.result === 'won' ? '🟩' : '🟥';
-        const row  = document.createElement('div');
-        row.className = 'archive-row';
-        row.innerHTML = `<span>${emoji} ${key}</span><span>${lvl?.name ?? `Nivel ${saved.levelId}`}</span>`;
-        list.appendChild(row);
-    }
-}
+// (archivo de niveles: ver /niveles.html)
 
 // ── Sistema de compartir ──────────────────────────────────────────────────────
 function buildShareText(): string {
     const emoji = gameState === 'won' ? '🟩' : '🟥';
-    const diff  = currentLevel.difficulty.toUpperCase();
+    const diff = currentLevel.difficulty.toUpperCase();
     const scoreStr = gameState === 'won' ? ` · Precisión ${lastParkingScore}/10 ⭐` : '';
     return `🚗 Parkindle ${dateString} — ${diff}\n${emoji} ${attemptCount} intento${attemptCount === 1 ? '' : 's'} · Racha ${streak} 🔥${scoreStr}\nparkindle.com`;
 }
@@ -260,6 +315,17 @@ document.getElementById('share-twitter-btn')?.addEventListener('click', () => {
     const url = encodeURIComponent('https://parkindle.com');
     const txt = encodeURIComponent(buildShareText());
     window.open(`https://twitter.com/intent/tweet?text=${txt}&url=${url}`, '_blank', 'noopener,width=560,height=420');
+});
+
+document.getElementById('share-whatsapp-btn')?.addEventListener('click', () => {
+    const txt = encodeURIComponent(buildShareText());
+    window.open(`https://wa.me/?text=${txt}`, '_blank', 'noopener');
+});
+
+document.getElementById('share-telegram-btn')?.addEventListener('click', () => {
+    const txt = encodeURIComponent(buildShareText());
+    const url = encodeURIComponent('https://parkindle.com');
+    window.open(`https://t.me/share/url?url=${url}&text=${txt}`, '_blank', 'noopener');
 });
 
 const nativeBtn = document.getElementById('share-native-btn');
@@ -282,7 +348,7 @@ document.getElementById('retry-btn')?.addEventListener('click', retryLevel);
 let countdownInterval: ReturnType<typeof setInterval> | null = null;
 
 function updateCountdown() {
-    const now    = new Date();
+    const now = new Date();
     const nowKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}-${now.getUTCDate()}`;
 
     // Si ya cambió el día, recargamos para que cargue el nivel nuevo
@@ -293,7 +359,7 @@ function updateCountdown() {
     }
 
     const tomorrowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
-    const diff        = tomorrowUTC - now.getTime();
+    const diff = tomorrowUTC - now.getTime();
 
     const h = Math.floor(diff / 3_600_000).toString().padStart(2, '0');
     const m = Math.floor((diff % 3_600_000) / 60_000).toString().padStart(2, '0');
@@ -360,10 +426,13 @@ function saveStreak() {
     try { localStorage.setItem('parkindle_streak', streak.toString()); } catch { /* cuota excedida o no disponible */ }
 }
 
+// ── Audio ─────────────────────────────────────────────────────────────────────
+initAudio();
+
 // ── Tutorial (primera visita) ─────────────────────────────────────────────────
 (function initTutorial() {
     const modal = document.getElementById('tutorial-modal');
-    const btn   = document.getElementById('tutorial-close-btn');
+    const btn = document.getElementById('tutorial-close-btn');
     if (!modal || !btn) return;
 
     if (!localStorage.getItem('parkindle_tutorial_seen')) {
@@ -414,7 +483,7 @@ function validateParkingAccess(lvl: Level): void {
     // Zona de entrada: justo delante de la plaza
     const entrance: Rect = isBattery
         ? { x: spot.x + spot.w / 2 - MARGIN / 2, y: spot.y + spot.h, w: MARGIN, h: MARGIN }
-        : { x: spot.x + spot.w,                   y: spot.y + spot.h / 2 - MARGIN / 2, w: MARGIN, h: MARGIN };
+        : { x: spot.x + spot.w, y: spot.y + spot.h / 2 - MARGIN / 2, w: MARGIN, h: MARGIN };
 
     const blocked = [...lvl.walls, ...lvl.parkedCars].some(obs => rectsOverlap(entrance, obs));
     if (blocked) {
@@ -439,8 +508,13 @@ function loadLevel(lvl: Level) {
     finishTriggered = false;
     particles = [];
     attemptCount = 1;
+    currentGear = 1;
     setCrashAngleOffset(0);
+    setParkBtnVisible(false);
     document.getElementById('result-modal')?.classList.add('hidden');
+    // Sincronizar el selector con el nivel cargado
+    const sel = document.getElementById('level-select') as HTMLSelectElement | null;
+    if (sel) sel.value = String(lvl.id);
 }
 
 (function initLevelSelector() {
@@ -461,6 +535,64 @@ function loadLevel(lvl: Level) {
         const lvl = getLevelById(parseInt(sel.value, 10));
         if (lvl) loadLevel(lvl);
     });
+})();
+
+// ── Selector de modo de conducción ───────────────────────────────────────────
+(function initDriveModeSelector() {
+    const btn = document.getElementById('drive-mode-btn');
+    const gearHint = document.getElementById('gear-hint');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+        driveMode = driveMode === 'auto' ? 'manual' : 'auto';
+        currentGear = 1;
+        btn.textContent = driveMode === 'manual' ? '⚙ Manual (Marchas)' : '⚙ Automático';
+        gearHint?.classList.toggle('hidden', driveMode === 'auto');
+    });
+})();
+
+// ── Modal de Feedback (Formspree — sin exponer email) ────────────────────────
+initFeedbackModal({
+    modalId:          'feedback-modal',
+    closeId:          'feedback-close',
+    sendId:           'feedback-send',
+    textId:           'feedback-text',
+    nameId:           'feedback-name',
+    triggerSelectors: ['.feedback-trigger', '#feedback-btn-game'],
+});
+
+// ── Query param ?level=ID (desde la página de niveles anteriores) ─────────────
+(function applyQueryLevel() {
+    const params = new URLSearchParams(window.location.search);
+    const levelParam = params.get('level');
+    if (!levelParam) return;
+    const id = parseInt(levelParam, 10);
+    if (isNaN(id)) return;
+    const lvl = LEVELS.find(l => l.id === id);
+    if (lvl && lvl.id !== dailyLevel.id) loadLevel(lvl);
+})();
+
+// ── Controles táctiles (D-pad) ────────────────────────────────────────────────
+(function initTouchControls() {
+    const map: Record<string, string> = {
+        'dpad-up':    'ArrowUp',
+        'dpad-down':  'ArrowDown',
+        'dpad-left':  'ArrowLeft',
+        'dpad-right': 'ArrowRight',
+    };
+    for (const [id, key] of Object.entries(map)) {
+        const btn = document.getElementById(id);
+        if (!btn) continue;
+        btn.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            keys[key] = true;
+            btn.classList.add('pressed');
+            btn.setPointerCapture(e.pointerId);
+        });
+        const release = () => { keys[key] = false; btn.classList.remove('pressed'); };
+        btn.addEventListener('pointerup', release);
+        btn.addEventListener('pointercancel', release);
+    }
 })();
 
 // Si ya hay un resultado guardado de hoy, mostrar el modal directamente

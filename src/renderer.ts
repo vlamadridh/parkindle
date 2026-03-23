@@ -4,10 +4,10 @@ import type { CarState } from './car';
 import { CAR_W, CAR_H, MAX_SPEED } from './car';
 
 // ── Constantes de render ─────────────────────────────────────────────────────
-const GRID_CELL_SIZE        = 40;   // px entre líneas de la rejilla
-const SPOT_PULSE_PERIOD     = 400;  // ms por ciclo del pulso de la plaza
-const CRASH_PARTICLE_COUNT  = 22;
-const WIN_PARTICLE_COUNT    = 30;
+const GRID_CELL_SIZE = 40;   // px entre líneas de la rejilla
+const SPOT_PULSE_PERIOD = 400;  // ms por ciclo del pulso de la plaza
+const CRASH_PARTICLE_COUNT = 22;
+const WIN_PARTICLE_COUNT = 30;
 
 const ASPHALT = '#1a1a2e';
 const LANE_MARK = 'rgba(255,255,255,0.18)';
@@ -21,6 +21,8 @@ export function drawFrame(
     car: CarState,
     gameState: 'playing' | 'won' | 'lost',
     particles: Particle[],
+    gearLabel?: string,
+    parkingAlignment?: number, // 0–1 (1=perfecto) — solo cuando el coche está en la zona
 ) {
     const W = canvas.width;
     const H = canvas.height;
@@ -66,7 +68,7 @@ export function drawFrame(
     });
 
     // Plaza de aparcamiento
-    drawParkingSpot(ctx, level.parkingSpot, gameState);
+    drawParkingSpot(ctx, level.parkingSpot, gameState, parkingAlignment);
 
     // Partículas
     for (const p of particles) drawParticle(ctx, p);
@@ -79,13 +81,14 @@ export function drawFrame(
     }
 
     // HUD
-    drawHUD(ctx, level, car, gameState);
+    drawHUD(ctx, level, car, gameState, gearLabel);
 }
 
 function drawParkingSpot(
     ctx: CanvasRenderingContext2D,
     spot: Level['parkingSpot'],
     state: 'playing' | 'won' | 'lost',
+    alignment?: number, // 0–1 (1=perfecto), definido cuando el coche está en la zona
 ) {
     ctx.save();
     ctx.translate(spot.x + spot.w / 2, spot.y + spot.h / 2);
@@ -97,20 +100,35 @@ function drawParkingSpot(
     const pulse = (Math.sin(Date.now() / SPOT_PULSE_PERIOD) + 1) / 2;
     const alpha = state === 'playing' ? 0.15 + pulse * 0.1 : 0.35;
 
-    if (state === 'won') ctx.fillStyle = `rgba(0,255,136,0.4)`;
-    else if (state === 'lost') ctx.fillStyle = `rgba(255,68,68,0.2)`;
-    else ctx.fillStyle = `rgba(0,229,255,${alpha})`;
+    // Color del borde según estado o alineación
+    let borderColor: string;
+    if (state === 'won') {
+        ctx.fillStyle = `rgba(0,255,136,0.4)`;
+        borderColor = '#00ff88';
+    } else if (state === 'lost') {
+        ctx.fillStyle = `rgba(255,68,68,0.2)`;
+        borderColor = '#ff4444';
+    } else if (alignment !== undefined) {
+        // Coche dentro de la zona: interpolar rojo → amarillo → verde
+        const r = Math.round(alignment < 0.5 ? 255 : 255 * (1 - (alignment - 0.5) * 2));
+        const g = Math.round(alignment < 0.5 ? 255 * alignment * 2 : 255);
+        borderColor = `rgb(${r},${g},0)`;
+        ctx.fillStyle = `rgba(${r},${g},0,${alpha})`;
+    } else {
+        ctx.fillStyle = `rgba(0,229,255,${alpha})`;
+        borderColor = '#00e5ff';
+    }
 
     ctx.fillRect(-hw, -hh, spot.w, spot.h);
 
     // Líneas de la plaza
-    ctx.strokeStyle = state === 'won' ? '#00ff88' : state === 'lost' ? '#ff4444' : '#00e5ff';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = alignment !== undefined && state === 'playing' ? 3.5 : 2.5;
     ctx.setLineDash([]);
     ctx.strokeRect(-hw, -hh, spot.w, spot.h);
 
     // Marca P
-    ctx.fillStyle = ctx.strokeStyle;
+    ctx.fillStyle = borderColor;
     ctx.font = 'bold 22px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -174,7 +192,7 @@ function drawPlayerCar(ctx: CanvasRenderingContext2D, car: CarState) {
     // ── Ruedas traseras (fijas) ──
     ctx.fillStyle = '#111';
     ctx.fillRect(-hw - 4, hh - 17, 5, 11);
-    ctx.fillRect(hw - 1,  hh - 17, 5, 11);
+    ctx.fillRect(hw - 1, hh - 17, 5, 11);
 
     // ── Ruedas delanteras (giradas según wheelAngle) ──
     const wheelW = 5;
@@ -254,7 +272,8 @@ function drawHUD(
     ctx: CanvasRenderingContext2D,
     level: Level,
     car: CarState,
-    gameState: 'playing' | 'won' | 'lost',
+    _gameState: 'playing' | 'won' | 'lost',
+    gearLabel?: string,
 ) {
     const col = DIFFICULTY_COLORS[level.difficulty] ?? '#fff';
     const canvasH = ctx.canvas.height;
@@ -278,7 +297,7 @@ function drawHUD(
 
     // Panel superior derecho: velocímetro
     const speedKmh = Math.round(Math.abs(car.speed) / MAX_SPEED * 60);
-    const reverse  = car.speed < -0.05;
+    const reverse = car.speed < -0.05;
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     roundedRect(ctx, canvasW - 100, 12, 88, 50, 8);
     ctx.fill();
@@ -293,7 +312,12 @@ function drawHUD(
     ctx.font = '11px "Segoe UI", system-ui, sans-serif';
     ctx.fillText('km/h', canvasW - 18, 40);
 
-    if (reverse) {
+    if (gearLabel) {
+        // Indicador de marcha (modo manual)
+        ctx.fillStyle = gearLabel === 'R' ? '#ff6b6b' : gearLabel === 'N' ? '#ffd700' : '#00e5ff';
+        ctx.font = 'bold 11px "Segoe UI", system-ui, sans-serif';
+        ctx.fillText(`M${gearLabel}`, canvasW - 18, 27);
+    } else if (reverse) {
         ctx.fillStyle = '#ff6b6b';
         ctx.font = 'bold 10px "Segoe UI", system-ui, sans-serif';
         ctx.fillText('R', canvasW - 18, 27);

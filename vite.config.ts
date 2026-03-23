@@ -5,8 +5,9 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                main: resolve(__dirname, 'index.html'),
-                game: resolve(__dirname, 'game.html'),
+                main:    resolve(__dirname, 'index.html'),
+                game:    resolve(__dirname, 'game.html'),
+                niveles: resolve(__dirname, 'niveles.html'),
             },
         },
     },

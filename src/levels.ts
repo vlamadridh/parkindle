@@ -119,25 +119,28 @@ export const LEVELS: Level[] = [
         name: 'Patio abierto',
         difficulty: 'fácil',
         carStart: { x: 600, y: 480, angle: -Math.PI / 2 },
-        // Plaza izquierda — campo completamente abierto, poca orientación
         parkingSpot: { x: 96, y: 80, w: 50, h: 74, angle: 0 },
-        walls: [...B],
+        walls: [
+            ...B,
+            // Dos pilares centrales — obligan a esquivar en lugar de ir recto
+            { x: 340, y: 310, w: 70, h: 70 },  // pilar centro-izquierda
+            { x: 510, y: 180, w: 70, h: 70 },  // pilar centro-derecha
+        ],
         parkedCars: [
             // Fila superior (hueco a la izquierda para la plaza)
-            // plaza x:90-152
             { x: 170, y: 72, w: 52, h: 82 },
             { x: 250, y: 72, w: 52, h: 82 },
             { x: 350, y: 72, w: 52, h: 82 },
             { x: 450, y: 72, w: 52, h: 82 },
             { x: 560, y: 72, w: 52, h: 82 },
             { x: 660, y: 72, w: 52, h: 82 },
-            // Algunos coches en los lados para dar ambiente
+            // Coches en los lados
             { x: 22,  y: 240, w: 52, h: 82 },
             { x: 22,  y: 400, w: 52, h: 82 },
             { x: 726, y: 240, w: 52, h: 82 },
             { x: 726, y: 400, w: 52, h: 82 },
         ],
-        hint: 'Campo libre. La plaza está a la izquierda arriba.',
+        hint: 'Esquiva los pilares centrales y aparca arriba a la izquierda.',
     },
 
     // ── NIVEL 21: Callejón ─────────────────────────────────────────────────
@@ -145,18 +148,17 @@ export const LEVELS: Level[] = [
         id: 21,
         name: 'Callejón',
         difficulty: 'fácil',
-        // Coche abajo centro, plaza arriba centro
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
         parkingSpot: { x: 375, y: 80, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
-            // Dos muros laterales crean un pasillo central
-            { x: 20,  y: 20, w: 250, h: 430 },   // muro izq (deja paso x:270-780)
-            { x: 530, y: 20, w: 250, h: 430 },   // muro der (deja paso x:20-530)
-            // pasillo = x:270-530 = 260px de ancho
+            // Dos muros laterales — pasillo estrecho de 130px
+            { x: 20,  y: 20, w: 310, h: 430 },   // muro izq (deja paso desde x:330)
+            { x: 460, y: 20, w: 320, h: 430 },   // muro der (deja paso hasta x:460)
+            // pasillo = x:330-460 = 130px de ancho
         ],
         parkedCars: [],
-        hint: 'El pasillo central te lleva directo a la plaza.',
+        hint: 'El pasillo es estrecho — entra recto y aparca arriba.',
     },
 
     // ── NIVEL 22: Curva larga ──────────────────────────────────────────────
@@ -327,13 +329,28 @@ export const LEVELS: Level[] = [
             { x: 250, y: 170, w: 300, h: 220 },
         ],
         parkedCars: [
-            // Fila superior alrededor de la plaza
+            // Fila superior — flanquean la plaza y llenan la fila
             // spot x:55-117
             { x: 135, y: 72, w: 52, h: 82 },
-            { x: 680, y: 72, w: 52, h: 82 },
-            { x: 720, y: 72, w: 52, h: 82 },
+            { x: 205, y: 72, w: 52, h: 82 },
+            { x: 285, y: 72, w: 52, h: 82 },
+            { x: 365, y: 72, w: 52, h: 82 },
+            { x: 445, y: 72, w: 52, h: 82 },
+            { x: 560, y: 72, w: 52, h: 82 },
+            { x: 628, y: 72, w: 52, h: 82 },
+            { x: 700, y: 72, w: 52, h: 82 },
+            // Flancos de la isla — estrechan los pasillos laterales
+            { x: 168, y: 200, w: 52, h: 82 },
+            { x: 168, y: 310, w: 52, h: 82 },
+            { x: 560, y: 200, w: 52, h: 82 },
+            { x: 560, y: 310, w: 52, h: 82 },
+            // Fila inferior — dan ambiente y reducen el espacio de maniobra
+            { x: 22,  y: 450, w: 52, h: 82 },
+            { x: 580, y: 450, w: 52, h: 82 },
+            { x: 660, y: 450, w: 52, h: 82 },
+            { x: 726, y: 450, w: 52, h: 82 },
         ],
-        hint: 'Rodea el bloque central por la izquierda o la derecha.',
+        hint: 'Rodea la isla por la izquierda o la derecha — los pasillos son estrechos.',
     },
 
     // ── NIVEL 23: La bifurcación ───────────────────────────────────────────
@@ -480,7 +497,7 @@ export const LEVELS: Level[] = [
             { x: 580, y: 160, w: 52, h: 82 },
             { x: 660, y: 160, w: 52, h: 82 },
         ],
-        hint: 'Baja por la izquierda, sortea el muro y aparca abajo.',
+        hint: 'Ve a la izquierda, pasa el hueco junto al borde y aparca abajo.',
     },
 
     // ── NIVEL 14: El caracol ───────────────────────────────────────────────
@@ -849,6 +866,11 @@ export const LEVELS: Level[] = [
         hint: 'Serpentea por las tres barreras: derecha, izquierda, derecha.',
     },
 ];
+
+// ── Orden diario: progresión de dificultad entremezclada ─────────────────────
+// F-F-M-F-M-D-F-M-D-F-M-D-E-F-M-D-E-M-D-E-M-D-E-D-E-D-E
+const _DAILY_ORDER = [1, 2, 3, 8, 4, 5, 9, 10, 6, 21, 11, 13, 7, 22, 12, 14, 17, 23, 15, 18, 24, 16, 19, 25, 20, 26, 27];
+LEVELS.sort((a, b) => _DAILY_ORDER.indexOf(a.id) - _DAILY_ORDER.indexOf(b.id));
 
 export function getLevelForDate(date: Date): Level {
     // Usamos UTC para que todos los jugadores reciban el mismo nivel,

@@ -162,11 +162,14 @@
             <img src="/Parkindle_logo.png" alt="Parkindle" class="h-10 w-10 rounded-lg" />
             <h2 class="text-slate-100 text-2xl font-black leading-tight tracking-tight uppercase">Parkindle</h2>
         </div>
-        <div class="flex items-center gap-4">
-            <div class="hidden md:flex flex-col items-end">
-                <span class="text-xs font-bold uppercase tracking-widest text-primary">Reto Diario</span>
-                <span class="text-sm text-slate-500">Un nivel nuevo cada día</span>
-            </div>
+        <div class="flex items-center gap-3">
+            <a href="/niveles.html"
+               class="hidden md:inline-flex px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 text-sm font-bold uppercase tracking-widest hover:text-primary hover:border-primary/30 transition-colors">
+                Niveles
+            </a>
+            <button id="feedback-btn-index" class="hidden md:inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 text-sm font-bold uppercase tracking-widest hover:text-primary hover:border-primary/30 transition-colors cursor-pointer">
+                💬 Feedback
+            </button>
             <button id="theme-toggle" title="Cambiar tema">
                 <span id="theme-icon">🌙</span>
             </button>
@@ -240,13 +243,19 @@
                 Jugar hoy
             </a>
 
+            <a href="/niveles.html"
+               class="w-full py-3 rounded-xl border border-primary/20 bg-primary/5 text-primary font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors">
+                <span class="material-symbols-outlined text-base mat">history</span>
+                Ver niveles anteriores
+            </a>
+
             <div class="flex items-center gap-3 justify-center text-slate-600">
                 <div class="h-px flex-1 bg-primary/10"></div>
                 <span class="text-xs font-bold uppercase tracking-widest">O usa el teclado</span>
                 <div class="h-px flex-1 bg-primary/10"></div>
             </div>
 
-            <div class="flex justify-center gap-2">
+            <div class="flex justify-center gap-2 flex-wrap">
                 <div class="px-3 py-2 rounded border border-primary/20 bg-primary/5 text-xs font-mono text-slate-300">WASD</div>
                 <div class="px-3 py-2 rounded border border-primary/20 bg-primary/5 text-xs font-mono text-slate-300">↑ ↓ ← →</div>
                 <div class="px-3 py-2 rounded border border-primary/20 bg-primary/5 text-xs font-mono text-slate-300">R — Reintentar</div>
@@ -273,8 +282,33 @@
                 <span class="text-[10px] uppercase font-bold tracking-tighter text-slate-500">Racha posible</span>
             </div>
         </div>
+
+        <!-- Compartir en redes -->
+        <div class="flex flex-col items-center gap-3">
+            <span class="text-xs font-bold uppercase tracking-widest text-slate-600">Comparte con tus amigos</span>
+            <div class="flex gap-3">
+                <a id="footer-share-twitter" href="#" target="_blank" rel="noopener"
+                   class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/5 border border-primary/15 text-slate-400 text-xs font-bold hover:text-primary hover:border-primary/35 transition-colors">
+                    <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M10.94 1h2.1L8.48 6.24 14 13H9.68L6.3 8.7 2.43 13H.33l4.84-5.54L0 1h4.43l3.06 4L10.94 1zm-.74 10.8h1.16L3.85 2.17H2.6l7.6 9.63z"/></svg>
+                    X / Twitter
+                </a>
+                <a id="footer-share-whatsapp" href="#" target="_blank" rel="noopener"
+                   class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/5 border border-primary/15 text-slate-400 text-xs font-bold hover:text-primary hover:border-primary/35 transition-colors">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.557 4.12 1.529 5.845L.057 23.49a.75.75 0 0 0 .921.921l5.645-1.472A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.9 0-3.7-.5-5.27-1.38l-.38-.22-3.93 1.03 1.04-3.83-.24-.39A9.96 9.96 0 0 1 2 12c0-5.514 4.486-10 10-10s10 4.486 10 10-4.486 10-10 10z"/></svg>
+                    WhatsApp
+                </a>
+                <a id="footer-share-telegram" href="#" target="_blank" rel="noopener"
+                   class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/5 border border-primary/15 text-slate-400 text-xs font-bold hover:text-primary hover:border-primary/35 transition-colors">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.88 13.47l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.268.089z"/></svg>
+                    Telegram
+                </a>
+            </div>
+        </div>
+
         <nav class="flex gap-6 text-xs font-bold uppercase tracking-widest text-slate-600">
             <a class="hover:text-primary transition-colors" href="/game.html">Jugar</a>
+            <a class="hover:text-primary transition-colors" href="/niveles.html">Niveles</a>
+            <button id="footer-feedback-btn" class="hover:text-primary transition-colors cursor-pointer bg-transparent border-none font-bold uppercase tracking-widest text-slate-600 text-xs font-display">Feedback</button>
         </nav>
         <p class="text-xs text-slate-700">parkindle.com</p>
     </footer>
@@ -287,6 +321,61 @@
     </div>
 
 </div>
+
+<!-- Modal de feedback -->
+<div id="feedback-modal-index" class="feedback-modal-index hidden">
+    <div class="feedback-box-index">
+        <button class="feedback-close-index" id="feedback-close-index">✕</button>
+        <h3>💬 Cuéntanos qué piensas</h3>
+        <p>Bugs, ideas, quejas, lo que sea. Lo leemos todo.</p>
+        <textarea id="feedback-text-index" placeholder="Escribe tu mensaje…" rows="5"></textarea>
+        <div class="feedback-row-index">
+            <input id="feedback-name-index" type="text" placeholder="Tu nombre (opcional)" />
+            <button id="feedback-send-index">Enviar →</button>
+        </div>
+        <small>Se abrirá tu app de correo con el mensaje listo.</small>
+    </div>
+</div>
+
+<style>
+.feedback-modal-index {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.feedback-modal-index.hidden { display: none; }
+.feedback-box-index {
+    background: #1a1a2e; border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 18px; padding: 28px; width: 100%; max-width: 420px; position: relative;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif;
+}
+html:not(.dark) .feedback-box-index { background: #fff; border-color: rgba(0,0,0,0.1); }
+.feedback-close-index {
+    position: absolute; top: 14px; right: 16px;
+    background: none; border: none; color: #64748b; font-size: 1rem; cursor: pointer;
+    padding: 4px 6px; border-radius: 6px;
+}
+.feedback-close-index:hover { background: #2d2d4e; color: #e2e8f0; }
+.feedback-box-index h3 { margin: 0 0 6px; font-size: 1.1rem; font-weight: 800; color: #e2e8f0; }
+html:not(.dark) .feedback-box-index h3 { color: #0f172a; }
+.feedback-box-index p { margin: 0 0 16px; font-size: 0.83rem; color: #64748b; }
+.feedback-box-index textarea, .feedback-box-index input {
+    width: 100%; background: #2d2d4e; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; color: #e2e8f0; font-family: inherit; font-size: 0.88rem;
+    padding: 12px; box-sizing: border-box; outline: none;
+}
+html:not(.dark) .feedback-box-index textarea,
+html:not(.dark) .feedback-box-index input { background: #f1f5f9; color: #0f172a; border-color: rgba(0,0,0,0.1); }
+.feedback-box-index textarea { resize: vertical; min-height: 110px; margin-bottom: 10px; }
+.feedback-row-index { display: flex; gap: 10px; }
+.feedback-row-index input { flex: 1; padding: 9px 12px; border-radius: 9px; }
+#feedback-send-index {
+    background: #00e5ff; color: #0f0f23; border: none; border-radius: 9px;
+    padding: 9px 18px; font-size: 0.88rem; font-weight: 800; cursor: pointer;
+    font-family: inherit; white-space: nowrap;
+}
+.feedback-box-index small { display: block; margin-top: 10px; font-size: 0.73rem; color: #64748b; text-align: center; }
+</style>
 
 <!-- Overlay de transición -->
 <div id="page-transition">
@@ -308,6 +397,70 @@
             e.preventDefault();
             navigateTo('/game.html');
         });
+    });
+
+    // ── Compartir en footer ────────────────────────────────────────────────
+    const shareText = encodeURIComponent('🚗 Parkindle — El reto diario de aparcamiento. ¿Cuántos intentos necesitas? parkindle.com');
+    const shareUrl  = encodeURIComponent('https://parkindle.com');
+    document.getElementById('footer-share-twitter')?.setAttribute('href',
+        `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`);
+    document.getElementById('footer-share-whatsapp')?.setAttribute('href',
+        `https://wa.me/?text=${encodeURIComponent('🚗 Parkindle — El reto diario de aparcamiento. ¿Cuántos intentos necesitas?\nhttps://parkindle.com')}`);
+    document.getElementById('footer-share-telegram')?.setAttribute('href',
+        `https://t.me/share/url?url=${shareUrl}&text=${shareText}`);
+
+    // ── Feedback index (Formspree — no expone ningún email) ───────────────
+    // → Pon aquí tu URL de Formspree una vez creada (https://formspree.io/f/XXXXXXXX)
+    const FORMSPREE_URL = 'https://formspree.io/f/mjgpkgnp';
+    const feedbackModal = document.getElementById('feedback-modal-index');
+
+    function openFeedbackIndex()  { feedbackModal?.classList.remove('hidden'); }
+    function closeFeedbackIndex() {
+        feedbackModal?.classList.add('hidden');
+        document.getElementById('feedback-text-index').value = '';
+        document.getElementById('feedback-name-index').value = '';
+        const btn = document.getElementById('feedback-send-index');
+        btn.textContent = 'Enviar →'; btn.disabled = false;
+        feedbackModal?.querySelector('.fb-status')?.remove();
+    }
+
+    document.getElementById('feedback-btn-index')?.addEventListener('click', openFeedbackIndex);
+    document.getElementById('footer-feedback-btn')?.addEventListener('click', openFeedbackIndex);
+    document.getElementById('feedback-close-index')?.addEventListener('click', closeFeedbackIndex);
+    feedbackModal?.addEventListener('click', e => { if (e.target === feedbackModal) closeFeedbackIndex(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFeedbackIndex(); });
+
+    document.getElementById('feedback-send-index')?.addEventListener('click', async () => {
+        const text = document.getElementById('feedback-text-index')?.value?.trim();
+        const name = document.getElementById('feedback-name-index')?.value?.trim();
+        if (!text) return;
+        const btn = document.getElementById('feedback-send-index');
+        btn.textContent = 'Enviando…'; btn.disabled = true;
+        feedbackModal?.querySelector('.fb-status')?.remove();
+        try {
+            const res = await fetch(FORMSPREE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ name: name || 'Anónimo', message: text }),
+            });
+            const p = document.createElement('p');
+            p.className = 'fb-status';
+            p.style.cssText = 'margin:10px 0 0;font-size:0.8rem;font-weight:600;text-align:center';
+            if (res.ok) {
+                p.textContent = '✅ ¡Enviado! Gracias por tu feedback.';
+                p.style.color = '#2ecc71';
+                btn.textContent = '¡Enviado!';
+                btn.insertAdjacentElement('afterend', p);
+                setTimeout(closeFeedbackIndex, 2000);
+            } else { throw new Error(); }
+        } catch {
+            const p = document.createElement('p');
+            p.className = 'fb-status';
+            p.style.cssText = 'margin:10px 0 0;font-size:0.8rem;font-weight:600;text-align:center;color:#e74c3c';
+            p.textContent = '❌ Error al enviar. Inténtalo de nuevo.';
+            document.getElementById('feedback-send-index').insertAdjacentElement('afterend', p);
+            btn.textContent = 'Enviar →'; btn.disabled = false;
+        }
     });
 
     // ── Tema ──────────────────────────────────────────────────────────────

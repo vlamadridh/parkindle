@@ -9,6 +9,12 @@ export interface CarState {
     crashed: boolean;
 }
 
+/** Parámetros de transmisión manual pasados a updateCar */
+export interface Transmission {
+    maxFwd: number;    // velocidad máxima hacia delante (0 = neutral o marcha atrás)
+    allowRev: boolean; // true si está en marcha atrás (R)
+}
+
 // ── Dimensiones del coche (px) ──────────────────────────────────────────────
 export const CAR_W = 26;   // ancho visual
 export const CAR_H = 46;   // alto visual
@@ -43,6 +49,7 @@ export function updateCar(
     canvasH: number,
     walls: Rect[],
     parkedCars: Rect[],
+    transmission?: Transmission,
 ): 'ok' | 'crashed' {
     if (car.crashed) return 'crashed';
 
@@ -52,28 +59,54 @@ export function updateCar(
     const right = keys['ArrowRight'] || keys['d'] || keys['D'];
 
     // ── Aceleración / Frenada ──────────────────────────────────────────────
-    if (up) {
-        if (car.speed < 0) {
-            // Frenada cuando íbamos hacia atrás
-            car.speed = Math.min(0, car.speed + BRAKE_ACCEL * dt);
+    if (transmission) {
+        const { maxFwd, allowRev } = transmission;
+        if (allowRev) {
+            // Marcha atrás: ↓ = aceleración, ↑ = freno
+            if (up)        car.speed = Math.min(0, car.speed + BRAKE_ACCEL * dt);
+            else if (down) car.speed -= ACCEL * 0.7 * dt;
+            else {
+                if (car.speed > 0) car.speed = Math.max(0, car.speed - FRICTION_ROLL * dt);
+                if (car.speed < 0) car.speed = Math.min(0, car.speed + FRICTION_ROLL * dt);
+            }
+            car.speed = Math.max(-MAX_REV, Math.min(car.speed, 0));
+        } else if (maxFwd === 0) {
+            // Punto muerto: solo rozamiento
+            if (car.speed > 0) car.speed = Math.max(0, car.speed - FRICTION_ROLL * dt);
+            if (car.speed < 0) car.speed = Math.min(0, car.speed + FRICTION_ROLL * dt);
         } else {
-            car.speed += ACCEL * dt;
-        }
-    } else if (down) {
-        if (car.speed > 0) {
-            // Frenada cuando íbamos hacia delante
-            car.speed = Math.max(0, car.speed - BRAKE_ACCEL * dt);
-        } else {
-            car.speed -= ACCEL * 0.7 * dt; // marcha atrás más lenta
+            // Marcha delantera: ↑ = acelerar hasta maxFwd, ↓ = solo frenar
+            if (up) {
+                if (car.speed < 0) car.speed = Math.min(0, car.speed + BRAKE_ACCEL * dt);
+                else car.speed += ACCEL * dt;
+            } else if (down) {
+                car.speed = Math.max(0, car.speed - BRAKE_ACCEL * dt);
+            } else {
+                if (car.speed > 0) car.speed = Math.max(0, car.speed - FRICTION_ROLL * dt);
+            }
+            car.speed = Math.max(0, Math.min(car.speed, maxFwd));
         }
     } else {
-        // Rozamiento de rodadura
-        if (car.speed > 0) car.speed = Math.max(0, car.speed - FRICTION_ROLL * dt);
-        if (car.speed < 0) car.speed = Math.min(0, car.speed + FRICTION_ROLL * dt);
+        // Modo automático (comportamiento original)
+        if (up) {
+            if (car.speed < 0) {
+                car.speed = Math.min(0, car.speed + BRAKE_ACCEL * dt);
+            } else {
+                car.speed += ACCEL * dt;
+            }
+        } else if (down) {
+            if (car.speed > 0) {
+                car.speed = Math.max(0, car.speed - BRAKE_ACCEL * dt);
+            } else {
+                car.speed -= ACCEL * 0.7 * dt;
+            }
+        } else {
+            if (car.speed > 0) car.speed = Math.max(0, car.speed - FRICTION_ROLL * dt);
+            if (car.speed < 0) car.speed = Math.min(0, car.speed + FRICTION_ROLL * dt);
+        }
+        // Clamp velocidad
+        car.speed = Math.max(-MAX_REV, Math.min(car.speed, MAX_SPEED));
     }
-
-    // Clamp velocidad
-    car.speed = Math.max(-MAX_REV, Math.min(car.speed, MAX_SPEED));
 
     // ── Ángulo de ruedas delanteras ────────────────────────────────────────
     if (left)       car.wheelAngle -= WHEEL_TURN * dt;
@@ -127,6 +160,28 @@ export function updateCar(
     car.y     = newY;
     car.angle = newAngle;
     return 'ok';
+}
+
+/** Devuelve true si todas las esquinas del coche están dentro de la plaza (sin comprobar velocidad ni ángulo) */
+export function isCarInZone(
+    car: CarState,
+    spot: { x: number; y: number; w: number; h: number; angle: number },
+): boolean {
+    const sx  = spot.x + spot.w / 2;
+    const sy  = spot.y + spot.h / 2;
+    const cos = Math.cos(-spot.angle);
+    const sin = Math.sin(-spot.angle);
+    const hw  = spot.w / 2;
+    const hh  = spot.h / 2;
+
+    for (const c of getCarCorners(car)) {
+        const dx     = c.x - sx;
+        const dy     = c.y - sy;
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+        if (Math.abs(localX) > hw || Math.abs(localY) > hh) return false;
+    }
+    return true;
 }
 
 /** Devuelve las 4 esquinas del coche en coordenadas mundo */
@@ -214,8 +269,11 @@ export function computeParkingScore(
         Math.sqrt((localX / roomX) ** 2 + (localY / roomY) ** 2) / Math.SQRT2
     );
 
+    // Penalización por velocidad: entrar rápido resta hasta 2 puntos
+    const speed_frac = Math.min(1, Math.abs(car.speed) / 1.5);
+
     return Math.max(1, Math.min(10,
-        Math.round(10 * (1 - 0.5 * angle_frac - 0.5 * pos_frac))
+        Math.round(10 * (1 - 0.4 * angle_frac - 0.4 * pos_frac - 0.2 * speed_frac))
     ));
 }
 
@@ -227,40 +285,3 @@ export function isSpawnSafe(
     return ![...walls, ...parkedCars].some(obs => obbVsAabb(x, y, angle, HITBOX_W, HITBOX_H, obs));
 }
 
-/** Comprueba si el coche está dentro de la plaza de aparcamiento */
-export function isParked(
-    car: CarState,
-    spot: { x: number; y: number; w: number; h: number; angle: number },
-): boolean {
-    // Debe estar casi parado
-    if (Math.abs(car.speed) > 0.25) return false;
-
-    // ── Ángulo esperado = eje LARGO de la plaza ─────────────────────────────
-    const expectedAngle = spot.h > spot.w
-        ? spot.angle + Math.PI / 2
-        : spot.angle;
-
-    // Diferencia normalizada (0..π) — acepta 0° o 180° (frente o marcha atrás)
-    let da = ((car.angle - expectedAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-    if (da > Math.PI) da = Math.PI * 2 - da;
-    const da180 = Math.abs(da - Math.PI);
-    if (da >= 0.50 && da180 >= 0.50) return false;
-
-    // ── Todas las esquinas del coche deben estar dentro de la plaza ──────────
-    const sx  = spot.x + spot.w / 2;
-    const sy  = spot.y + spot.h / 2;
-    const cos = Math.cos(-spot.angle);
-    const sin = Math.sin(-spot.angle);
-    const hw  = spot.w / 2;
-    const hh  = spot.h / 2;
-
-    for (const c of getCarCorners(car)) {
-        const dx     = c.x - sx;
-        const dy     = c.y - sy;
-        const localX = dx * cos - dy * sin;
-        const localY = dx * sin + dy * cos;
-        if (Math.abs(localX) > hw || Math.abs(localY) > hh) return false;
-    }
-
-    return true;
-}
