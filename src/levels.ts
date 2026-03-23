@@ -25,8 +25,8 @@ export const DIFFICULTY_COLORS: Record<Level['difficulty'], string> = {
 // Canvas: 800 × 600  |  CAR_W=26  CAR_H=46
 // Bordes (paredes externas): 20px de grosor → zona jugable: x:20-780, y:20-580
 // Coches aparcados estándar: w=52 h=82
-// Plaza de batería:  w=62 h=90 angle=0   → coche entra vertical   (ángulo ≈ ±PI/2)
-// Plaza de paralelo: w=90 h=52 angle=0   → coche entra horizontal  (ángulo ≈ 0 ó PI)
+// Plaza de batería:  w=50 h=74 angle=0   → coche entra vertical   (ángulo ≈ ±PI/2)
+// Plaza de paralelo: w=74 h=44 angle=0   → coche entra horizontal  (ángulo ≈ 0 ó PI)
 
 const B = [
     { x: 0,   y: 0,   w: 800, h: 20  },   // borde superior
@@ -47,7 +47,7 @@ export const LEVELS: Level[] = [
         name: 'Plaza libre',
         difficulty: 'fácil',
         carStart: { x: 400, y: 480, angle: -Math.PI / 2 },
-        parkingSpot: { x: 374, y: 75, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 380, y: 83, w: 50, h: 74, angle: 0 },
         walls: [...B],
         parkedCars: [
             { x: 90,  y: 72, w: 52, h: 82 },
@@ -68,7 +68,7 @@ export const LEVELS: Level[] = [
         difficulty: 'fácil',
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
         // Plaza a la derecha — camino libre por la derecha (x>620)
-        parkingSpot: { x: 654, y: 75, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 660, y: 83, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Separador horizontal — deja paso a la derecha (x:620-780)
@@ -94,7 +94,7 @@ export const LEVELS: Level[] = [
         // Empieza izquierda abajo, plaza arriba derecha
         carStart: { x: 160, y: 490, angle: -Math.PI / 2 },
         // Plaza: x:620-682, center x:651. Coche aprox. desde y>165 hacia arriba.
-        parkingSpot: { x: 620, y: 72, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 626, y: 80, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Muro central — solo deja paso a la derecha (x:550-780)
@@ -120,7 +120,7 @@ export const LEVELS: Level[] = [
         difficulty: 'fácil',
         carStart: { x: 600, y: 480, angle: -Math.PI / 2 },
         // Plaza izquierda — campo completamente abierto, poca orientación
-        parkingSpot: { x: 90, y: 72, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 96, y: 80, w: 50, h: 74, angle: 0 },
         walls: [...B],
         parkedCars: [
             // Fila superior (hueco a la izquierda para la plaza)
@@ -147,7 +147,7 @@ export const LEVELS: Level[] = [
         difficulty: 'fácil',
         // Coche abajo centro, plaza arriba centro
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
-        parkingSpot: { x: 369, y: 72, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 375, y: 80, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Dos muros laterales crean un pasillo central
@@ -166,7 +166,7 @@ export const LEVELS: Level[] = [
         difficulty: 'fácil',
         // Coche arriba derecha, plaza abajo izquierda
         carStart: { x: 680, y: 100, angle: Math.PI / 2 },  // mirando abajo
-        parkingSpot: { x: 90, y: 430, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 96, y: 438, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Muro que obliga a dar la vuelta por abajo
@@ -198,7 +198,7 @@ export const LEVELS: Level[] = [
         carStart: { x: 150, y: 490, angle: -Math.PI / 2 },
         // Plaza en el pasillo derecho, entre dos coches aparcados
         // Acceso: corredor x:600-780 (libre en ambos separadores)
-        parkingSpot: { x: 680, y: 230, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 686, y: 238, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Dos paredes horizontales — dejan corredor derecho (x:600-780)
@@ -224,7 +224,7 @@ export const LEVELS: Level[] = [
         carStart: { x: 100, y: 490, angle: -Math.PI / 2 },
         // Plaza arriba derecha — hay que zigzaguear
         // Acceso: subir por izq (x<280), cruzar a x>528, subir por derecha
-        parkingSpot: { x: 590, y: 72, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 596, y: 80, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Separador sup: deja paso a la derecha (x:528-780)
@@ -259,7 +259,7 @@ export const LEVELS: Level[] = [
         carStart: { x: 400, y: 480, angle: -Math.PI / 2 },
         // Plaza: x:680-742, y:55-145, center (711,100)
         // Acceso: corredor x:630-780 (entre fila sup y borde)
-        parkingSpot: { x: 680, y: 55, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 686, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Dos separadores que crean tres zonas
@@ -293,7 +293,7 @@ export const LEVELS: Level[] = [
         // Coche abajo derecha, plaza arriba izquierda
         // Hay que hacer una L: bajar, cruzar, subir
         carStart: { x: 660, y: 470, angle: Math.PI },  // mirando izquierda
-        parkingSpot: { x: 55, y: 55, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 61, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Muro vertical central — deja paso abajo (y:420-580)
@@ -320,7 +320,7 @@ export const LEVELS: Level[] = [
         difficulty: 'medio',
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
         // Plaza arriba izquierda — hay que rodear la isla central
-        parkingSpot: { x: 55, y: 72, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 61, y: 80, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Isla central (bloque sólido en el medio)
@@ -343,7 +343,7 @@ export const LEVELS: Level[] = [
         difficulty: 'medio',
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
         // Plaza arriba — hay un muro con dos pasos, solo el izquierdo lleva
-        parkingSpot: { x: 80, y: 72, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 86, y: 80, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Muro con dos pasos: izquierdo (x:20-190) y derecho (x:350-780)
@@ -376,7 +376,7 @@ export const LEVELS: Level[] = [
         difficulty: 'medio',
         carStart: { x: 680, y: 300, angle: Math.PI },  // derecha centro, mirando izq
         // Plaza izquierda — hay que atravesar un pasillo muy estrecho
-        parkingSpot: { x: 40, y: 230, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 46, y: 238, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Pasillo estrecho: dos paredes paralelas
@@ -412,7 +412,7 @@ export const LEVELS: Level[] = [
         difficulty: 'difícil',
         carStart: { x: 500, y: 300, angle: 0 },
         // Plaza paralela izquierda: w>h, el coche debe quedar vertical (angle≈±PI/2)
-        parkingSpot: { x: 45, y: 225, w: 90, h: 55, angle: Math.PI / 2 },
+        parkingSpot: { x: 53, y: 230, w: 74, h: 46, angle: Math.PI / 2 },
         walls: [
             ...B,
             // Pared vertical que separa zona de aparcamiento del carril
@@ -433,7 +433,7 @@ export const LEVELS: Level[] = [
         name: 'El laberinto',
         difficulty: 'difícil',
         carStart: { x: 690, y: 500, angle: Math.PI },
-        parkingSpot: { x: 60, y: 55, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 66, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Muro horizontal arriba — paso izq (<200) y der (>618)
@@ -461,7 +461,7 @@ export const LEVELS: Level[] = [
         // Coche empieza mirando HACIA ABAJO — tiene que maniobrar en reversa
         carStart: { x: 400, y: 120, angle: Math.PI / 2 },
         // Plaza abajo izquierda — acceso desde y>440 (bajo la pared)
-        parkingSpot: { x: 80, y: 430, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 86, y: 438, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Muro que bloquea el acceso directo — obliga a bordear
@@ -490,7 +490,7 @@ export const LEVELS: Level[] = [
         difficulty: 'difícil',
         carStart: { x: 680, y: 490, angle: Math.PI },  // abajo derecha, mirando izq
         // Plaza arriba izquierda — hay que serpentear
-        parkingSpot: { x: 55, y: 55, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 61, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Muro exterior (largo, casi cierra el paso)
@@ -521,7 +521,7 @@ export const LEVELS: Level[] = [
         // Coche en la carretera central, plaza en el bordillo izquierdo
         carStart: { x: 580, y: 300, angle: Math.PI },  // mirando izquierda
         // Plaza paralela: w>h → coche entra horizontal (ángulo ≈ 0 ó PI)
-        parkingSpot: { x: 30, y: 240, w: 90, h: 52, angle: 0 },
+        parkingSpot: { x: 38, y: 244, w: 74, h: 44, angle: 0 },
         walls: [
             ...B,
             // Bordillo — separa el aparcamiento de la carretera (gap pequeño)
@@ -550,21 +550,24 @@ export const LEVELS: Level[] = [
         id: 16,
         name: 'El cruce',
         difficulty: 'difícil',
-        carStart: { x: 700, y: 490, angle: -Math.PI / 2 },  // abajo derecha, arriba
-        // Plaza arriba izquierda — cruce de cuatro vías
-        parkingSpot: { x: 55, y: 55, w: 62, h: 90, angle: 0 },
+        carStart: { x: 650, y: 460, angle: -Math.PI / 2 },
+        // Plaza arriba izquierda — dos bloques crean un corredor en cruz
+        // Zona abierta top-left: x:20-320, y:20-340  |  bot-right: x:480-780, y:340-580
+        parkingSpot: { x: 61, y: 68, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
-            // Cuatro bloques en las esquinas interiores — crean cruz de pasillos
-            { x: 20,  y: 20,  w: 260, h: 200 },  // bloque superior izq (sobre la plaza)
-            // ← pero esto taparía la plaza, así que lo hago más pequeño:
+            { x: 320, y: 20,  w: 460, h: 240 },  // bloque superior derecho
+            { x: 20,  y: 340, w: 460, h: 240 },  // bloque inferior izquierdo
         ],
-        parkedCars: [],
-        hint: '',
+        parkedCars: [
+            { x: 135, y: 60, w: 52, h: 82 },
+            { x: 205, y: 60, w: 52, h: 82 },
+            { x: 510, y: 360, w: 52, h: 82 },
+            { x: 600, y: 360, w: 52, h: 82 },
+            { x: 700, y: 360, w: 52, h: 82 },
+        ],
+        hint: 'Cruza el corredor central hacia la izquierda y aparca arriba.',
     },
-
-    // ── NIVEL 16 REDISEÑADO: El cruce ─────────────────────────────────────
-    // (El anterior tenía error, rediseño limpio)
 
     // ── NIVEL 25: Curva cerrada ────────────────────────────────────────────
     {
@@ -573,7 +576,7 @@ export const LEVELS: Level[] = [
         difficulty: 'difícil',
         carStart: { x: 680, y: 100, angle: Math.PI / 2 },  // arriba derecha, bajando
         // Plaza abajo izquierda — hay que dar una vuelta completa
-        parkingSpot: { x: 80, y: 420, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 86, y: 428, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Muro en U que obliga a rodear
@@ -602,7 +605,7 @@ export const LEVELS: Level[] = [
         difficulty: 'difícil',
         carStart: { x: 390, y: 490, angle: -Math.PI / 2 },
         // Plaza arriba derecha — dos barreras con pasos alternos
-        parkingSpot: { x: 640, y: 55, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 646, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Primera barrera: paso a la derecha (x:530-780)
@@ -640,7 +643,7 @@ export const LEVELS: Level[] = [
         //        subir de nuevo por la izquierda (gap top), llegar a la plaza.
         carStart: { x: 700, y: 490, angle: -Math.PI / 2 },
         // Plaza: x:55-117, y:60-150, center(86,105). Acceso desde y>150 (abajo).
-        parkingSpot: { x: 55, y: 60, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 61, y: 68, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Divisor superior: x:160-780, gap izq x:20-160
@@ -677,7 +680,7 @@ export const LEVELS: Level[] = [
         difficulty: 'experto',
         carStart: { x: 680, y: 490, angle: Math.PI },  // abajo derecha, mirando izq
         // Plaza arriba derecha — hay que serpentear por tres zonas
-        parkingSpot: { x: 640, y: 55, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 646, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Tres barreras alternas — crean serpentina
@@ -707,7 +710,7 @@ export const LEVELS: Level[] = [
         difficulty: 'experto',
         carStart: { x: 100, y: 100, angle: Math.PI / 2 },  // arriba izq, mirando abajo
         // Plaza abajo derecha — ruta compleja con tres zonas
-        parkingSpot: { x: 640, y: 420, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 646, y: 428, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Barrera superior: deja paso izquierdo (x:20-180)
@@ -742,7 +745,7 @@ export const LEVELS: Level[] = [
         // Coche en el carril, debe hacer paralelo en hueco muy justo
         carStart: { x: 600, y: 290, angle: Math.PI },  // mirando izquierda
         // Plaza paralela estrecha — coche debe quedar horizontal
-        parkingSpot: { x: 30, y: 238, w: 90, h: 52, angle: 0 },
+        parkingSpot: { x: 38, y: 242, w: 74, h: 44, angle: 0 },
         walls: [
             ...B,
             // Bordillo que separa aparcamiento de carretera
@@ -778,7 +781,7 @@ export const LEVELS: Level[] = [
         // Coche en el interior del cuadrado, plaza en el exterior (hay que salir)
         carStart: { x: 400, y: 340, angle: 0 },  // interior, mirando derecha
         // Plaza fuera del cuadrado — arriba izquierda
-        parkingSpot: { x: 55, y: 55, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 61, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Cuadrado interior — solo una salida (abajo izquierda)
@@ -811,7 +814,7 @@ export const LEVELS: Level[] = [
         difficulty: 'experto',
         carStart: { x: 700, y: 490, angle: Math.PI },  // abajo derecha, izquierda
         // Plaza arriba derecha — ruta larga en Z
-        parkingSpot: { x: 640, y: 55, w: 62, h: 90, angle: 0 },
+        parkingSpot: { x: 646, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Barrera 1: x:20-480, gap der x:480-780

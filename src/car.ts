@@ -10,14 +10,18 @@ export interface CarState {
 }
 
 // ── Dimensiones del coche (px) ──────────────────────────────────────────────
-export const CAR_W = 26;
-export const CAR_H = 46;
+export const CAR_W = 26;   // ancho visual
+export const CAR_H = 46;   // alto visual
+
+// Hitbox de colisión — más pequeño que el visual para ser más permisivo
+export const HITBOX_W = 20;
+export const HITBOX_H = 38;
 
 // ── Parámetros de física ─────────────────────────────────────────────────────
-const ACCEL       = 0.20;   // aceleración por frame
-const BRAKE_ACCEL = 0.28;   // frenada es más fuerte que aceleración
-const MAX_SPEED   = 3.0;    // velocidad máxima hacia delante (px/frame)
-const MAX_REV     = 1.8;    // velocidad máxima marcha atrás
+const ACCEL          = 0.20;   // aceleración por frame
+const BRAKE_ACCEL    = 0.28;   // frenada es más fuerte que aceleración
+export const MAX_SPEED = 3.0;  // velocidad máxima hacia delante (px/frame)
+const MAX_REV        = 1.8;    // velocidad máxima marcha atrás
 
 const FRICTION_ROLL  = 0.04;  // rozamiento rodadura (cuando no se pisa gas)
 
@@ -113,7 +117,7 @@ export function updateCar(
     // ── Colisión con obstáculos (SAT — OBB vs AABB) ────────────────────────
     const obstacles = [...walls, ...parkedCars];
     for (const obs of obstacles) {
-        if (obbVsAabb(newX, newY, newAngle, CAR_W, CAR_H, obs)) {
+        if (obbVsAabb(newX, newY, newAngle, HITBOX_W, HITBOX_H, obs)) {
             car.crashed = true;
             return 'crashed';
         }
@@ -181,6 +185,48 @@ function obbVsAabb(cx: number, cy: number, angle: number, cw: number, ch: number
     return true; // solapan en todos los ejes → colisión
 }
 
+/** Calcula la puntuación del aparcamiento (1–10) según ángulo y posición */
+export function computeParkingScore(
+    car: CarState,
+    spot: { x: number; y: number; w: number; h: number; angle: number },
+): number {
+    const sx = spot.x + spot.w / 2;
+    const sy = spot.y + spot.h / 2;
+
+    // Error de ángulo normalizado (0 = perfecto, 1 = al límite de tolerancia)
+    const expectedAngle = spot.h > spot.w
+        ? spot.angle + Math.PI / 2
+        : spot.angle;
+    let da = ((car.angle - expectedAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    if (da > Math.PI) da = Math.PI * 2 - da;
+    const angle_frac = Math.min(1, Math.min(da, Math.abs(da - Math.PI)) / 0.50);
+
+    // Error de posición normalizado (0 = centrado, 1 = en el borde)
+    const dx = car.x - sx;
+    const dy = car.y - sy;
+    const cos = Math.cos(-spot.angle);
+    const sin = Math.sin(-spot.angle);
+    const localX = dx * cos - dy * sin;
+    const localY = dx * sin + dy * cos;
+    const roomX = Math.max(1, spot.w / 2 - CAR_W / 2);
+    const roomY = Math.max(1, spot.h / 2 - CAR_H / 2);
+    const pos_frac = Math.min(1,
+        Math.sqrt((localX / roomX) ** 2 + (localY / roomY) ** 2) / Math.SQRT2
+    );
+
+    return Math.max(1, Math.min(10,
+        Math.round(10 * (1 - 0.5 * angle_frac - 0.5 * pos_frac))
+    ));
+}
+
+/** Devuelve true si la posición de spawn no solapa ningún obstáculo (usa hitbox) */
+export function isSpawnSafe(
+    x: number, y: number, angle: number,
+    walls: Rect[], parkedCars: Rect[],
+): boolean {
+    return ![...walls, ...parkedCars].some(obs => obbVsAabb(x, y, angle, HITBOX_W, HITBOX_H, obs));
+}
+
 /** Comprueba si el coche está dentro de la plaza de aparcamiento */
 export function isParked(
     car: CarState,
@@ -189,37 +235,32 @@ export function isParked(
     // Debe estar casi parado
     if (Math.abs(car.speed) > 0.25) return false;
 
-    // Centro de la plaza
-    const sx = spot.x + spot.w / 2;
-    const sy = spot.y + spot.h / 2;
-
-    // Transformar la posición del coche al sistema local del parking spot
-    const dx = car.x - sx;
-    const dy = car.y - sy;
-    const cos = Math.cos(-spot.angle);
-    const sin = Math.sin(-spot.angle);
-    const localX = dx * cos - dy * sin;
-    const localY = dx * sin + dy * cos;
-
-    // Tolerancia: la mitad de las dimensiones + margen
-    const tolX = spot.w / 2 + 14;
-    const tolY = spot.h / 2 + 14;
-    if (Math.abs(localX) > tolX || Math.abs(localY) > tolY) return false;
-
     // ── Ángulo esperado = eje LARGO de la plaza ─────────────────────────────
-    // Si h > w (plaza más alta que ancha, aparcamiento en batería):
-    //   el eje largo es perpendicular a spot.angle → expectedAngle = spot.angle + PI/2
-    // Si w >= h (plaza más ancha que alta, aparcamiento en paralelo):
-    //   el eje largo va en la dirección de spot.angle → expectedAngle = spot.angle
     const expectedAngle = spot.h > spot.w
         ? spot.angle + Math.PI / 2
         : spot.angle;
 
-    // Diferencia normalizada (0..π)
+    // Diferencia normalizada (0..π) — acepta 0° o 180° (frente o marcha atrás)
     let da = ((car.angle - expectedAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
     if (da > Math.PI) da = Math.PI * 2 - da;
-
-    // Acepta 0° o 180° (entró de frente o marcha atrás)
     const da180 = Math.abs(da - Math.PI);
-    return da < 0.50 || da180 < 0.50;
+    if (da >= 0.50 && da180 >= 0.50) return false;
+
+    // ── Todas las esquinas del coche deben estar dentro de la plaza ──────────
+    const sx  = spot.x + spot.w / 2;
+    const sy  = spot.y + spot.h / 2;
+    const cos = Math.cos(-spot.angle);
+    const sin = Math.sin(-spot.angle);
+    const hw  = spot.w / 2;
+    const hh  = spot.h / 2;
+
+    for (const c of getCarCorners(car)) {
+        const dx     = c.x - sx;
+        const dy     = c.y - sy;
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+        if (Math.abs(localX) > hw || Math.abs(localY) > hh) return false;
+    }
+
+    return true;
 }

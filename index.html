@@ -1,68 +1,339 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Parkindle — El Reto Diario</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  </head>
-  <body>
-    <div id="game-wrapper">
-      <header>
-        <div id="header-inner">
-          <h1>🚗 Parkindle</h1>
-          <p class="subtitle">Aparca sin rozar nada · Un nivel nuevo cada día</p>
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Parkindle — El Reto Diario de Aparcamiento</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "primary":         "#00e5ff",
+                    "background-dark": "#0f0f23",
+                    "surface":         "#1a1a2e",
+                    "surface-2":       "#2d2d4e",
+                },
+                fontFamily: { "display": ["Inter", "sans-serif"] },
+                borderRadius: {
+                    "DEFAULT": "0.5rem", "lg": "1rem",
+                    "xl": "1.5rem", "full": "9999px"
+                },
+            },
+        },
+    }
+</script>
+<style>
+    .parking-pattern {
+        background-image: radial-gradient(circle at 2px 2px, rgba(0,229,255,0.04) 1px, transparent 0);
+        background-size: 40px 40px;
+    }
+    .parking-lines {
+        background-image: linear-gradient(
+            90deg,
+            transparent 45%,
+            rgba(0,229,255,0.12) 45%,
+            rgba(0,229,255,0.12) 55%,
+            transparent 55%
+        );
+        background-size: 80px 100%;
+    }
+    .glow-btn {
+        box-shadow: 0 4px 32px rgba(0,229,255,0.25), 0 2px 8px rgba(0,229,255,0.15);
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .glow-btn:hover {
+        box-shadow: 0 6px 40px rgba(0,229,255,0.38), 0 2px 12px rgba(0,229,255,0.22);
+    }
+    .mat { font-variation-settings: 'FILL' 1, 'wght' 600; }
+
+    /* ── Transición de página ── */
+    #page-transition {
+        position: fixed;
+        inset: 0;
+        background: #0f0f23;
+        z-index: 9999;
+        clip-path: circle(0% at 50% 88%);
+        transition: clip-path 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+    #page-transition.active {
+        clip-path: circle(160% at 50% 88%);
+        pointer-events: all;
+    }
+    #transition-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        opacity: 0;
+        transform: scale(0.8);
+        transition: opacity 0.25s ease 0.3s, transform 0.25s ease 0.3s;
+    }
+    #page-transition.active #transition-inner {
+        opacity: 1;
+        transform: scale(1);
+    }
+    #transition-inner img {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+    }
+    #transition-inner span {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: rgba(0,229,255,0.6);
+    }
+
+    /* ── Light mode ── */
+    html:not(.dark) body { background-color: #eef2ff !important; color: #0f172a; }
+    html:not(.dark) header {
+        background-color: rgba(238,242,255,0.96) !important;
+        border-bottom-color: rgba(0,0,0,0.07) !important;
+    }
+    html:not(.dark) h1, html:not(.dark) h2, html:not(.dark) h3 { color: #0f172a !important; }
+    html:not(.dark) .text-slate-100 { color: #0f172a !important; }
+    html:not(.dark) .text-slate-400 { color: #475569 !important; }
+    html:not(.dark) .text-slate-500 { color: #64748b !important; }
+    html:not(.dark) .text-slate-600 { color: #374151 !important; }
+    html:not(.dark) .text-slate-700 { color: #1f2937 !important; }
+    html:not(.dark) .text-primary   { color: #007a8a !important; }
+    html:not(.dark) [class*="bg-surface"]   { background-color: rgba(255,255,255,0.85) !important; }
+    html:not(.dark) [class*="bg-primary/1"] { background-color: rgba(0,122,138,0.08) !important; }
+    html:not(.dark) [class*="bg-primary/2"] { background-color: rgba(0,122,138,0.12) !important; }
+    html:not(.dark) [class*="border-primary"] { border-color: rgba(0,122,138,0.2) !important; }
+    html:not(.dark) .bg-primary     { background-color: #007a8a !important; color: #fff !important; }
+    html:not(.dark) .text-slate-300 { color: #374151 !important; }
+    html:not(.dark) footer { border-top-color: rgba(0,0,0,0.06) !important; }
+    html:not(.dark) .parking-pattern {
+        background-image: radial-gradient(circle at 2px 2px, rgba(0,100,120,0.06) 1px, transparent 0);
+    }
+    html:not(.dark) .parking-lines {
+        background-image: linear-gradient(90deg, transparent 45%, rgba(0,100,120,0.09) 45%, rgba(0,100,120,0.09) 55%, transparent 55%);
+    }
+    html:not(.dark) .glow-btn { box-shadow: 0 4px 24px rgba(0,122,138,0.3) !important; }
+    html:not(.dark) #page-transition { background: #eef2ff; }
+    html:not(.dark) #transition-inner span { color: rgba(0,100,120,0.6); }
+    html:not(.dark) [class*="bg-primary/5"] { background-color: rgba(0,122,138,0.06) !important; }
+    html:not(.dark) .bg-primary\/5  { background-color: rgba(0,122,138,0.06) !important; }
+    html:not(.dark) [class*="text-slate-"] { --tw-text-opacity: 1; }
+
+    /* Toggle button */
+    #theme-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px; height: 38px;
+        border-radius: 10px;
+        border: 1px solid rgba(0,229,255,0.25);
+        background: rgba(0,229,255,0.08);
+        color: #00e5ff;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s, color 0.2s;
+        font-size: 1.1rem;
+    }
+    #theme-toggle:hover { background: rgba(0,229,255,0.15); }
+    html:not(.dark) #theme-toggle {
+        border-color: rgba(0,122,138,0.25);
+        background: rgba(0,122,138,0.08);
+        color: #007a8a;
+    }
+    html:not(.dark) #theme-toggle:hover { background: rgba(0,122,138,0.15); }
+</style>
+</head>
+<body class="bg-background-dark font-display text-slate-100 min-h-screen">
+
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden parking-pattern">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-6 py-5 lg:px-20 border-b border-primary/10 backdrop-blur-md sticky top-0 z-50 bg-background-dark/80">
+        <div class="flex items-center gap-3">
+            <img src="/Parkindle_logo.png" alt="Parkindle" class="h-10 w-10 rounded-lg" />
+            <h2 class="text-slate-100 text-2xl font-black leading-tight tracking-tight uppercase">Parkindle</h2>
         </div>
-        <div id="controls-hint">
-          <kbd>↑↓</kbd> acelerar · <kbd>←→</kbd> girar · <kbd>WASD</kbd> también funciona
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex flex-col items-end">
+                <span class="text-xs font-bold uppercase tracking-widest text-primary">Reto Diario</span>
+                <span class="text-sm text-slate-500">Un nivel nuevo cada día</span>
+            </div>
+            <button id="theme-toggle" title="Cambiar tema">
+                <span id="theme-icon">🌙</span>
+            </button>
+            <a href="/game.html"
+               class="px-4 py-2 rounded-lg bg-primary/15 border border-primary/30 text-primary text-sm font-bold uppercase tracking-widest hover:bg-primary/25 transition-colors">
+                Jugar
+            </a>
         </div>
-      </header>
+    </header>
 
-      <div id="level-selector-bar">
-        <label for="level-select">Probar nivel:</label>
-        <select id="level-select"></select>
-      </div>
+    <!-- Hero -->
+    <main class="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full">
 
-      <div id="canvas-container">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-
-        <!-- Modal resultado -->
-        <div id="result-modal" class="hidden">
-          <div id="modal-header">
-            <h2 id="modal-title">¡Aparcado!</h2>
-            <span id="modal-diff" class="diff-badge">FÁCIL</span>
-          </div>
-
-          <p id="modal-desc">Has superado el reto de hoy.</p>
-
-          <div class="stats-row">
-            <div class="stat-box">
-              <span id="streak-count" class="stat-num">0</span>
-              <span class="stat-label">Racha 🔥</span>
+        <div class="text-center mb-12">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest mb-5">
+                <span class="material-symbols-outlined text-sm">calendar_today</span>
+                Puzzle de hoy disponible
             </div>
-            <div class="stat-box">
-              <span id="attempts-count" class="stat-num">1</span>
-              <span class="stat-label">Intentos</span>
-            </div>
-            <div class="stat-box">
-              <div id="history-grid"></div>
-              <span class="stat-label">Últimos 7 días</span>
-            </div>
-          </div>
 
-          <button id="retry-btn" class="hidden">Reintentar 🔄</button>
-          <button id="share-btn">Copiar resultado 📋</button>
+            <h1 class="text-5xl md:text-7xl font-black text-slate-100 mb-5 tracking-tighter italic uppercase leading-none">
+                Aparca sin<br/>
+                <span class="text-primary">rozar nada.</span>
+            </h1>
 
-          <p class="countdown">Próximo nivel en <span id="time-left">--:--:--</span></p>
-
-          <div id="archive-section">
-            <h3>Niveles anteriores</h3>
-            <div id="archive-list"></div>
-          </div>
+            <p class="text-lg text-slate-400 max-w-lg mx-auto leading-relaxed">
+                Un nivel nuevo cada día. Conduce tu coche hasta la plaza marcada sin chocar.
+                ¿Cuántos intentos necesitarás?
+            </p>
         </div>
-      </div>
+
+        <!-- How to play -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mb-12">
+
+            <div class="bg-surface/60 border border-primary/10 p-6 rounded-xl flex flex-col items-center text-center group hover:border-primary/35 hover:bg-surface transition-colors">
+                <div class="size-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-3xl text-primary mat">directions_car</span>
+                </div>
+                <h3 class="font-bold text-lg mb-2 text-slate-100">1. Conduce</h3>
+                <p class="text-sm text-slate-400 leading-relaxed">
+                    Usa las flechas o <kbd class="px-1 py-0.5 text-xs bg-surface-2 rounded border border-white/10">WASD</kbd> para acelerar y girar el volante.
+                </p>
+            </div>
+
+            <div class="bg-surface/60 border border-primary/10 p-6 rounded-xl flex flex-col items-center text-center group hover:border-primary/35 hover:bg-surface transition-colors">
+                <div class="size-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-3xl text-primary mat">route</span>
+                </div>
+                <h3 class="font-bold text-lg mb-2 text-slate-100">2. Navega</h3>
+                <p class="text-sm text-slate-400 leading-relaxed">
+                    Sortea paredes y coches aparcados. Cada nivel tiene un camino, encuéntralo.
+                </p>
+            </div>
+
+            <div class="bg-surface/60 border border-primary/10 p-6 rounded-xl flex flex-col items-center text-center group hover:border-primary/35 hover:bg-surface transition-colors">
+                <div class="size-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <span class="material-symbols-outlined text-3xl text-primary mat">sports_score</span>
+                </div>
+                <h3 class="font-bold text-lg mb-2 text-slate-100">3. Aparca</h3>
+                <p class="text-sm text-slate-400 leading-relaxed">
+                    Entra en la plaza azul y para el motor. Cuanto más centrado, mejor puntuación.
+                </p>
+            </div>
+
+        </div>
+
+        <!-- CTA -->
+        <div class="w-full max-w-md flex flex-col gap-4">
+            <a href="/game.html"
+               class="glow-btn w-full bg-primary hover:bg-primary/90 text-background-dark font-black py-5 rounded-xl text-xl uppercase tracking-widest flex items-center justify-center gap-3 transform hover:-translate-y-1">
+                <span class="material-symbols-outlined font-bold mat">play_arrow</span>
+                Jugar hoy
+            </a>
+
+            <div class="flex items-center gap-3 justify-center text-slate-600">
+                <div class="h-px flex-1 bg-primary/10"></div>
+                <span class="text-xs font-bold uppercase tracking-widest">O usa el teclado</span>
+                <div class="h-px flex-1 bg-primary/10"></div>
+            </div>
+
+            <div class="flex justify-center gap-2">
+                <div class="px-3 py-2 rounded border border-primary/20 bg-primary/5 text-xs font-mono text-slate-300">WASD</div>
+                <div class="px-3 py-2 rounded border border-primary/20 bg-primary/5 text-xs font-mono text-slate-300">↑ ↓ ← →</div>
+                <div class="px-3 py-2 rounded border border-primary/20 bg-primary/5 text-xs font-mono text-slate-300">R — Reintentar</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto p-10 flex flex-col items-center gap-6 border-t border-primary/8">
+        <div class="flex gap-10 text-slate-400">
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-2xl font-black text-slate-100 italic">27</span>
+                <span class="text-[10px] uppercase font-bold tracking-tighter text-slate-500">Niveles</span>
+            </div>
+            <div class="w-px bg-primary/10"></div>
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-2xl font-black text-slate-100 italic">4</span>
+                <span class="text-[10px] uppercase font-bold tracking-tighter text-slate-500">Dificultades</span>
+            </div>
+            <div class="w-px bg-primary/10"></div>
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-2xl font-black text-primary italic">∞</span>
+                <span class="text-[10px] uppercase font-bold tracking-tighter text-slate-500">Racha posible</span>
+            </div>
+        </div>
+        <nav class="flex gap-6 text-xs font-bold uppercase tracking-widest text-slate-600">
+            <a class="hover:text-primary transition-colors" href="/game.html">Jugar</a>
+        </nav>
+        <p class="text-xs text-slate-700">parkindle.com</p>
+    </footer>
+
+    <!-- Decoración de fondo -->
+    <div class="fixed inset-0 pointer-events-none z-[-1] opacity-30">
+        <div class="absolute top-1/4 left-6 w-28 h-52 border border-primary/20 rounded-lg parking-lines transform -rotate-12"></div>
+        <div class="absolute bottom-1/4 right-6 w-28 h-52 border border-primary/20 rounded-lg parking-lines transform rotate-12"></div>
+        <div class="hidden md:block absolute top-2/3 left-1/4 w-20 h-36 border border-primary/10 rounded-lg parking-lines transform rotate-6"></div>
     </div>
 
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+</div>
+
+<!-- Overlay de transición -->
+<div id="page-transition">
+    <div id="transition-inner">
+        <img src="/Parkindle_logo.png" alt="Parkindle" />
+        <span>Cargando…</span>
+    </div>
+</div>
+
+<script>
+    function navigateTo(url) {
+        const overlay = document.getElementById('page-transition');
+        overlay.classList.add('active');
+        setTimeout(() => { window.location.href = url; }, 620);
+    }
+
+    document.querySelectorAll('a[href="/game.html"]').forEach(link => {
+        link.addEventListener('click', e => {
+            e.preventDefault();
+            navigateTo('/game.html');
+        });
+    });
+
+    // ── Tema ──────────────────────────────────────────────────────────────
+    const html = document.documentElement;
+    const icon = document.getElementById('theme-icon');
+
+    function applyTheme(theme) {
+        if (theme === 'light') {
+            html.classList.remove('dark');
+            icon.textContent = '☀️';
+        } else {
+            html.classList.add('dark');
+            icon.textContent = '🌙';
+        }
+    }
+
+    // Cargar tema guardado
+    applyTheme(localStorage.getItem('parkindle_theme') || 'dark');
+
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+        const isDark = html.classList.contains('dark');
+        const next = isDark ? 'light' : 'dark';
+        localStorage.setItem('parkindle_theme', next);
+        applyTheme(next);
+    });
+</script>
+
+</body>
 </html>

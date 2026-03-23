@@ -1,7 +1,7 @@
 import type { Level } from './levels';
 import { DIFFICULTY_COLORS } from './levels';
 import type { CarState } from './car';
-import { CAR_W, CAR_H } from './car';
+import { CAR_W, CAR_H, MAX_SPEED } from './car';
 
 // ── Constantes de render ─────────────────────────────────────────────────────
 const GRID_CELL_SIZE        = 40;   // px entre líneas de la rejilla
@@ -79,7 +79,7 @@ export function drawFrame(
     }
 
     // HUD
-    drawHUD(ctx, level);
+    drawHUD(ctx, level, car, gameState);
 }
 
 function drawParkingSpot(
@@ -250,12 +250,19 @@ function drawStaticCar(
     ctx.restore();
 }
 
-function drawHUD(ctx: CanvasRenderingContext2D, level: Level) {
+function drawHUD(
+    ctx: CanvasRenderingContext2D,
+    level: Level,
+    car: CarState,
+    gameState: 'playing' | 'won' | 'lost',
+) {
     const col = DIFFICULTY_COLORS[level.difficulty] ?? '#fff';
+    const canvasH = ctx.canvas.height;
+    const canvasW = ctx.canvas.width;
 
     ctx.save();
 
-    // Panel superior: nivel + dificultad
+    // Panel superior izquierdo: nivel + dificultad
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     roundedRect(ctx, 12, 12, 220, 50, 8);
     ctx.fill();
@@ -269,9 +276,32 @@ function drawHUD(ctx: CanvasRenderingContext2D, level: Level) {
     ctx.font = '12px "Segoe UI", system-ui, sans-serif';
     ctx.fillText(`● ${level.difficulty.toUpperCase()}`, 22, 36);
 
+    // Panel superior derecho: velocímetro
+    const speedKmh = Math.round(Math.abs(car.speed) / MAX_SPEED * 60);
+    const reverse  = car.speed < -0.05;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    roundedRect(ctx, canvasW - 100, 12, 88, 50, 8);
+    ctx.fill();
+
+    ctx.fillStyle = reverse ? '#ff6b6b' : '#fff';
+    ctx.font = 'bold 26px "Segoe UI", system-ui, sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${speedKmh}`, canvasW - 30, 13);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '11px "Segoe UI", system-ui, sans-serif';
+    ctx.fillText('km/h', canvasW - 18, 40);
+
+    if (reverse) {
+        ctx.fillStyle = '#ff6b6b';
+        ctx.font = 'bold 10px "Segoe UI", system-ui, sans-serif';
+        ctx.fillText('R', canvasW - 18, 27);
+    }
+
+    ctx.textAlign = 'left';
+
     // Panel inferior: pista
-    const canvasH = ctx.canvas.height;
-    const canvasW = ctx.canvas.width;
     const hintPadX = 16;
     ctx.font = '12px "Segoe UI", system-ui, sans-serif';
     const hintW = Math.min(ctx.measureText(level.hint).width + hintPadX * 2, canvasW - 24);

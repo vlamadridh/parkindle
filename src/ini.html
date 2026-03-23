@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f4f425",
+                        "background-light": "#f8f8f5",
+                        "background-dark": "#222210",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .parking-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(244, 244, 37, 0.05) 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+        .parking-lines {
+            background-image: linear-gradient(90deg, transparent 45%, rgba(244, 244, 37, 0.1) 45%, rgba(244, 244, 37, 0.1) 55%, transparent 55%);
+            background-size: 80px 100%;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden parking-pattern">
+<header class="flex items-center justify-between px-6 py-5 lg:px-20 border-b border-primary/10 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-primary rounded-lg">
+<span class="material-symbols-outlined text-background-dark font-bold">navigation</span>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-2xl font-black leading-tight tracking-tight uppercase">Parkindle</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex flex-col items-end">
+<span class="text-xs font-bold uppercase tracking-widest text-primary">Daily Challenge</span>
+<span class="text-sm text-slate-500 dark:text-slate-400">Level 12 • Pro Parker</span>
+</div>
+<div class="size-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="Cartoon avatar of a smiling person" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAo5rQm-tdeRkVw8nNcayPfAuwtFH12AtNVgmXJlK2hE7KDSqBHs6m95prfniqu5RtHSKNfaHQ-dBSN7VG0HsF_Ra6pLxbczPhkAcsy06cTl7OqgF_YURVXLIReH7Qa4_KI92XDClJuTsxBUZIDSbq2LtsqtMUKD3Kymf4nYZLM6KrNGlq-GTSZ7LrF1qqEcliL0RGBdpoAl84CnO7QPBLYV88dFwmji4n6Ci5lM-dbhKWqkt7Nugp6_rJrojo0W_Zb5F6n6YhB6A"/>
+</div>
+</div>
+</header>
+<main class="flex-1 flex flex-col items-center justify-center px-6 py-12 max-w-4xl mx-auto w-full">
+<div class="text-center mb-12">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest mb-4">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+                    Today's Puzzle: Midnight Alley
+                </div>
+<h1 class="text-5xl md:text-7xl font-black text-slate-900 dark:text-slate-100 mb-4 tracking-tighter italic uppercase">Master the Spot.</h1>
+<p class="text-lg text-slate-600 dark:text-slate-400 max-w-lg mx-auto">Precision is key. Can you solve today's parking puzzle in under 5 moves?</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-12">
+<div class="bg-white/5 dark:bg-primary/5 border border-primary/10 p-6 rounded-xl flex flex-col items-center text-center group hover:border-primary/40 transition-colors">
+<div class="size-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl text-primary">swipe</span>
+</div>
+<h3 class="font-bold text-lg mb-2">1. Swipe to Move</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Swipe left, right, up, or down to slide your car across the grid.</p>
+</div>
+<div class="bg-white/5 dark:bg-primary/5 border border-primary/10 p-6 rounded-xl flex flex-col items-center text-center group hover:border-primary/40 transition-colors">
+<div class="size-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl text-primary">grid_view</span>
+</div>
+<h3 class="font-bold text-lg mb-2">2. Clear the Way</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Shift other vehicles out of your path. Plan your sequence carefully.</p>
+</div>
+<div class="bg-white/5 dark:bg-primary/5 border border-primary/10 p-6 rounded-xl flex flex-col items-center text-center group hover:border-primary/40 transition-colors">
+<div class="size-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-3xl text-primary">sports_score</span>
+</div>
+<h3 class="font-bold text-lg mb-2">3. Exit to Win</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Reach the designated exit point to complete the daily challenge.</p>
+</div>
+</div>
+<div class="w-full max-w-md flex flex-col gap-4">
+<button class="w-full bg-primary hover:bg-primary/90 text-background-dark font-black py-5 rounded-xl text-xl uppercase tracking-widest shadow-lg shadow-primary/20 flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1">
+<span class="material-symbols-outlined font-bold">play_arrow</span>
+                    Start Playing
+                </button>
+<div class="flex items-center gap-3 justify-center text-slate-500 dark:text-slate-400">
+<div class="h-[1px] flex-1 bg-primary/10"></div>
+<span class="text-xs font-bold uppercase tracking-widest">Or Use Keyboard</span>
+<div class="h-[1px] flex-1 bg-primary/10"></div>
+</div>
+<div class="flex justify-center gap-2">
+<div class="px-3 py-2 rounded border border-primary/20 bg-primary/5 text-xs font-mono">WASD</div>
+<div class="px-3 py-2 rounded border border-primary/20 bg-primary/5 text-xs font-mono">ARROWS</div>
+</div>
+</div>
+</main>
+<footer class="mt-auto p-10 flex flex-col items-center gap-6">
+<div class="flex gap-8 text-slate-500 dark:text-slate-400">
+<div class="flex flex-col items-center">
+<span class="text-2xl font-black text-slate-900 dark:text-slate-100 italic">4.8k</span>
+<span class="text-[10px] uppercase font-bold tracking-tighter">Daily Parkers</span>
+</div>
+<div class="w-[1px] bg-primary/10"></div>
+<div class="flex flex-col items-center">
+<span class="text-2xl font-black text-slate-900 dark:text-slate-100 italic">#342</span>
+<span class="text-[10px] uppercase font-bold tracking-tighter">Global Rank</span>
+</div>
+<div class="w-[1px] bg-primary/10"></div>
+<div class="flex flex-col items-center">
+<span class="text-2xl font-black text-slate-900 dark:text-slate-100 italic">14</span>
+<span class="text-[10px] uppercase font-bold tracking-tighter">Day Streak</span>
+</div>
+</div>
+<nav class="flex gap-6 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-600">
+<a class="hover:text-primary transition-colors" href="#">Stats</a>
+<a class="hover:text-primary transition-colors" href="#">History</a>
+<a class="hover:text-primary transition-colors" href="#">Settings</a>
+</nav>
+</footer>
+<div class="fixed inset-0 pointer-events-none z-[-1] opacity-20">
+<div class="absolute top-1/4 left-10 w-32 h-64 border-2 border-primary/30 rounded-lg parking-lines transform -rotate-12"></div>
+<div class="absolute bottom-1/4 right-10 w-32 h-64 border-2 border-primary/30 rounded-lg parking-lines transform rotate-12"></div>
+</div>
+</div>
+</body></html>

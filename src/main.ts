@@ -1,6 +1,6 @@
 import './style.css';
-import { getLevelForDate, getLevelById, DIFFICULTY_COLORS, LEVELS, type Level } from './levels';
-import { createCar, updateCar, isParked, type CarState } from './car';
+import { getLevelForDate, getLevelById, DIFFICULTY_COLORS, LEVELS, type Level, type Rect } from './levels';
+import { createCar, updateCar, isParked, isSpawnSafe, computeParkingScore, HITBOX_W, type CarState } from './car';
 import {
     drawFrame, setCrashAngleOffset,
     createCrashParticles, createWinParticles, updateParticles,
@@ -32,8 +32,11 @@ let gameState: 'playing' | 'won' | 'lost' = history[dateKey]?.result ?? 'playing
 let attemptCount  = history[dateKey]?.attempts ?? 1; // El primer intento es el 1
 let finishTriggered = false;
 let particles: Particle[] = [];
+let lastParkingScore = 0;
 
 // ── Coche ────────────────────────────────────────────────────────────────────
+// findSafeSpawn se define más abajo, así que usamos carStart directamente aquí;
+// loadLevel() aplica la validación completa al cambiar de nivel.
 let car: CarState = createCar(
     currentLevel.carStart.x,
     currentLevel.carStart.y,
@@ -76,6 +79,7 @@ function gameLoop(timestamp: number) {
             particles = createCrashParticles(car.x, car.y);
             endGame('lost');
         } else if (isParked(car, currentLevel.parkingSpot)) {
+            lastParkingScore = computeParkingScore(car, currentLevel.parkingSpot);
             particles = createWinParticles(car.x, car.y);
             endGame('won');
         }
@@ -121,10 +125,12 @@ function retryLevel() {
         history[dateKey] = { result: 'lost', levelId: currentLevel.id, attempts: attemptCount };
         saveHistory();
     }
-    car = createCar(currentLevel.carStart.x, currentLevel.carStart.y, currentLevel.carStart.angle);
+    const retrySpawn = findSafeSpawn(currentLevel);
+    car = createCar(retrySpawn.x, retrySpawn.y, retrySpawn.angle);
     gameState = 'playing';
     finishTriggered = false;
     particles = [];
+    lastParkingScore = 0;
     setCrashAngleOffset(0);
     document.getElementById('result-modal')?.classList.add('hidden');
 }
@@ -142,6 +148,8 @@ function showModal(result: 'won' | 'lost') {
     const attemptsSpan = document.getElementById('attempts-count');
     const diffBadge    = document.getElementById('modal-diff');
     const retryBtn     = document.getElementById('retry-btn');
+    const scoreBox     = document.getElementById('score-box');
+    const scoreNum     = document.getElementById('score-num');
 
     if (streakSpan)   streakSpan.innerText   = streak.toString();
     if (attemptsSpan) attemptsSpan.innerText = attemptCount.toString();
@@ -160,7 +168,20 @@ function showModal(result: 'won' | 'lost') {
             else retryBtn.classList.remove('hidden');
         }
         if (title)    title.className = 'win-text';
+
+        // Puntuación de aparcamiento
+        if (scoreBox && scoreNum) {
+            scoreBox.classList.remove('hidden');
+            scoreNum.innerText = lastParkingScore.toString();
+            const scoreColors: Record<number, string> = {
+                10: '#00ff88', 9: '#00e676', 8: '#69f0ae',
+                7: '#ffeb3b', 6: '#ffc107', 5: '#ff9800',
+                4: '#ff7043', 3: '#f44336', 2: '#e53935', 1: '#b71c1c',
+            };
+            scoreNum.style.color = scoreColors[lastParkingScore] ?? '#fff';
+        }
     } else {
+        if (scoreBox) scoreBox.classList.add('hidden');
         if (title)    title.innerText = '¡Choque! 💥';
         if (desc)     desc.innerText  = 'Has rayado la pintura. Toca pagar el seguro.';
         if (retryBtn) retryBtn.classList.remove('hidden');
@@ -218,17 +239,41 @@ function renderArchive() {
     }
 }
 
-// ── Botón compartir ───────────────────────────────────────────────────────────
-document.getElementById('share-btn')?.addEventListener('click', () => {
-    const emoji     = gameState === 'won' ? '🟩' : '🟥';
-    const shareText = `🚗 Parkindle - ${dateString}\nResultado: ${emoji}\nIntentos: ${attemptCount} · Racha: ${streak} 🔥\n\nJuega en: parkindle.com`;
-    navigator.clipboard.writeText(shareText).then(() => {
-        const btn = document.getElementById('share-btn')!;
-        const prev = btn.innerText;
-        btn.innerText = '¡Copiado! ✔️';
-        setTimeout(() => btn.innerText = prev, 2000);
+// ── Sistema de compartir ──────────────────────────────────────────────────────
+function buildShareText(): string {
+    const emoji = gameState === 'won' ? '🟩' : '🟥';
+    const diff  = currentLevel.difficulty.toUpperCase();
+    const scoreStr = gameState === 'won' ? ` · Precisión ${lastParkingScore}/10 ⭐` : '';
+    return `🚗 Parkindle ${dateString} — ${diff}\n${emoji} ${attemptCount} intento${attemptCount === 1 ? '' : 's'} · Racha ${streak} 🔥${scoreStr}\nparkindle.com`;
+}
+
+document.getElementById('share-copy-btn')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(buildShareText()).then(() => {
+        const btn = document.getElementById('share-copy-btn') as HTMLButtonElement;
+        const prev = btn.innerHTML;
+        btn.innerHTML = '✔ Copiado';
+        setTimeout(() => { btn.innerHTML = prev; }, 2000);
     });
 });
+
+document.getElementById('share-twitter-btn')?.addEventListener('click', () => {
+    const url = encodeURIComponent('https://parkindle.com');
+    const txt = encodeURIComponent(buildShareText());
+    window.open(`https://twitter.com/intent/tweet?text=${txt}&url=${url}`, '_blank', 'noopener,width=560,height=420');
+});
+
+const nativeBtn = document.getElementById('share-native-btn');
+if (!navigator.share) {
+    nativeBtn?.classList.add('hidden');
+} else {
+    nativeBtn?.addEventListener('click', () => {
+        navigator.share({
+            title: 'Parkindle',
+            text: buildShareText(),
+            url: 'https://parkindle.com',
+        }).catch(() => { /* usuario canceló */ });
+    });
+}
 
 // ── Reintentar ────────────────────────────────────────────────────────────────
 document.getElementById('retry-btn')?.addEventListener('click', retryLevel);
@@ -315,10 +360,81 @@ function saveStreak() {
     try { localStorage.setItem('parkindle_streak', streak.toString()); } catch { /* cuota excedida o no disponible */ }
 }
 
+// ── Tutorial (primera visita) ─────────────────────────────────────────────────
+(function initTutorial() {
+    const modal = document.getElementById('tutorial-modal');
+    const btn   = document.getElementById('tutorial-close-btn');
+    if (!modal || !btn) return;
+
+    if (!localStorage.getItem('parkindle_tutorial_seen')) {
+        modal.classList.remove('hidden');
+    }
+
+    btn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        localStorage.setItem('parkindle_tutorial_seen', '1');
+    });
+})();
+
+// ── Helpers de validación de nivel ───────────────────────────────────────────
+
+/** Busca un spawn seguro: si el spawn por defecto está bloqueado, busca uno cercano. */
+function findSafeSpawn(lvl: Level): { x: number; y: number; angle: number } {
+    const { x, y, angle } = lvl.carStart;
+    if (isSpawnSafe(x, y, angle, lvl.walls, lvl.parkedCars)) return { x, y, angle };
+
+    const STEP = 20;
+    const RANGE = 6;
+    for (let dy = -RANGE; dy <= RANGE; dy++) {
+        for (let dx = -RANGE; dx <= RANGE; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx * STEP;
+            const ny = y + dy * STEP;
+            if (nx < 40 || nx > 760 || ny < 40 || ny > 560) continue;
+            if (isSpawnSafe(nx, ny, angle, lvl.walls, lvl.parkedCars)) {
+                console.warn(`[Parkindle] Nivel ${lvl.id}: spawn desplazado de (${x},${y}) a (${nx},${ny})`);
+                return { x: nx, y: ny, angle };
+            }
+        }
+    }
+    console.error(`[Parkindle] Nivel ${lvl.id}: no se encontró spawn seguro — usando centro del canvas`);
+    return { x: 400, y: 400, angle };
+}
+
+/** Comprueba si hay espacio libre en la entrada de la plaza de aparcamiento. */
+function rectsOverlap(a: Rect, b: Rect): boolean {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function validateParkingAccess(lvl: Level): void {
+    const spot = lvl.parkingSpot;
+    const MARGIN = HITBOX_W + 15;
+    const isBattery = spot.h > spot.w;
+
+    // Zona de entrada: justo delante de la plaza
+    const entrance: Rect = isBattery
+        ? { x: spot.x + spot.w / 2 - MARGIN / 2, y: spot.y + spot.h, w: MARGIN, h: MARGIN }
+        : { x: spot.x + spot.w,                   y: spot.y + spot.h / 2 - MARGIN / 2, w: MARGIN, h: MARGIN };
+
+    const blocked = [...lvl.walls, ...lvl.parkedCars].some(obs => rectsOverlap(entrance, obs));
+    if (blocked) {
+        console.warn(`[Parkindle] Nivel ${lvl.id}: la entrada de la plaza parece bloqueada — revisa el diseño.`);
+    }
+
+    // La plaza en sí no debe solapar ningún obstáculo
+    const spotRect: Rect = { x: spot.x, y: spot.y, w: spot.w, h: spot.h };
+    const spotBlocked = [...lvl.walls, ...lvl.parkedCars].some(obs => rectsOverlap(spotRect, obs));
+    if (spotBlocked) {
+        console.error(`[Parkindle] Nivel ${lvl.id}: ¡la plaza de aparcamiento está TAPADA por un obstáculo!`);
+    }
+}
+
 // ── Selector de niveles ───────────────────────────────────────────────────────
 function loadLevel(lvl: Level) {
+    const safeSpawn = findSafeSpawn(lvl);
+    validateParkingAccess(lvl);
     currentLevel = lvl;
-    car = createCar(lvl.carStart.x, lvl.carStart.y, lvl.carStart.angle);
+    car = createCar(safeSpawn.x, safeSpawn.y, safeSpawn.angle);
     gameState = 'playing';
     finishTriggered = false;
     particles = [];
