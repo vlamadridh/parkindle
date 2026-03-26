@@ -273,10 +273,7 @@ function drawHUD(
     level: Level,
     car: CarState,
     _gameState: 'playing' | 'won' | 'lost',
-<<<<<<< HEAD
     gearLabel?: string,
-=======
->>>>>>> d7b9a4ff9001536f57cf8f5bb737155e2165563a
 ) {
     const col = DIFFICULTY_COLORS[level.difficulty] ?? '#fff';
     const canvasH = ctx.canvas.height;
