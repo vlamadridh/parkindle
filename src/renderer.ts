@@ -9,7 +9,10 @@ const SPOT_PULSE_PERIOD = 400;  // ms por ciclo del pulso de la plaza
 const CRASH_PARTICLE_COUNT = 22;
 const WIN_PARTICLE_COUNT = 30;
 
-const ASPHALT = '#1a1a2e';
+const ASPHALT_DAY     = '#252840';   // asfalto claro (día)
+const ASPHALT_NIGHT   = '#080810';   // asfalto muy oscuro (noche)
+const ASPHALT_RAIN    = '#111622';   // asfalto mojado (lluvia)
+const ASPHALT_TRAFFIC = '#1a1a2e';   // asfalto urbano (tráfico)
 const LANE_MARK = 'rgba(255,255,255,0.18)';
 const WALL_COL = '#2d2d4e';
 const PARKED_COLORS = ['#2a4a6b', '#4a2a2a', '#2a4a2a', '#4a3a2a', '#3a2a4a', '#2a3a4a'];
@@ -26,10 +29,18 @@ export function drawFrame(
 ) {
     const W = canvas.width;
     const H = canvas.height;
+    const ctx_level = level.context ?? 'day';
 
-    // Fondo asfalto
-    ctx.fillStyle = ASPHALT;
+    // Fondo asfalto — varía según el contexto del nivel
+    const asphaltColor =
+        ctx_level === 'night'   ? ASPHALT_NIGHT   :
+        ctx_level === 'rain'    ? ASPHALT_RAIN     :
+        ctx_level === 'traffic' ? ASPHALT_TRAFFIC  : ASPHALT_DAY;
+    ctx.fillStyle = asphaltColor;
     ctx.fillRect(0, 0, W, H);
+
+    // Ambiente de día (gradiente cálido sutil en la parte superior)
+    if (ctx_level === 'day') drawDayAmbiance(ctx, W, H);
 
     // Rejilla sutil
     ctx.strokeStyle = 'rgba(255,255,255,0.03)';
@@ -79,6 +90,10 @@ export function drawFrame(
     } else {
         drawCrashedCar(ctx, car);
     }
+
+    // ── Efectos de contexto (encima del mundo, bajo el HUD) ──────────────────
+    if (ctx_level === 'rain')  drawRain(ctx, W, H);
+    if (ctx_level === 'night') drawNightEffects(ctx, W, H);
 
     // HUD
     drawHUD(ctx, level, car, gameState, gearLabel);
@@ -402,6 +417,75 @@ function drawParticle(ctx: CanvasRenderingContext2D, p: Particle) {
     ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+}
+
+// ── Efectos de contexto ───────────────────────────────────────────────────────
+
+function drawDayAmbiance(ctx: CanvasRenderingContext2D, W: number, H: number) {
+    // Gradiente suave de luz solar desde arriba
+    const grad = ctx.createLinearGradient(0, 0, 0, H * 0.45);
+    grad.addColorStop(0, 'rgba(255,210,120,0.07)');
+    grad.addColorStop(1, 'rgba(255,210,120,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+}
+
+function drawRain(ctx: CanvasRenderingContext2D, W: number, H: number) {
+    const now = Date.now();
+    const SPEED = 380; // px/s
+    const DROPS = 110;
+
+    ctx.save();
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < DROPS; i++) {
+        // Distribución pseudoaleatoria basada en el índice (sin Math.random)
+        const x  = (i * 97.308 + 23) % W;
+        const yBase = ((now / 1000 * SPEED + i * 131.7) % (H + 30)) - 15;
+        const len = 6 + (i % 5) * 2.5;
+        const alpha = 0.18 + (i % 3) * 0.07;
+
+        ctx.strokeStyle = `rgba(160,210,255,${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(x,          yBase);
+        ctx.lineTo(x - 1.5,   yBase + len);
+        ctx.stroke();
+    }
+
+    // Reflejo húmedo — leve overlay azulado en la parte baja
+    const wet = ctx.createLinearGradient(0, H * 0.7, 0, H);
+    wet.addColorStop(0, 'rgba(80,130,200,0)');
+    wet.addColorStop(1, 'rgba(80,130,200,0.07)');
+    ctx.fillStyle = wet;
+    ctx.fillRect(0, H * 0.7, W, H * 0.3);
+
+    ctx.restore();
+}
+
+function drawNightEffects(ctx: CanvasRenderingContext2D, W: number, H: number) {
+    // Viñeta oscura en los bordes
+    const vignette = ctx.createRadialGradient(W / 2, H / 2, W * 0.15, W / 2, H / 2, W * 0.85);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.62)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, W, H);
+
+    // Farolas: halos de luz amarilla-naranja en las esquinas del mapa
+    const lamps = [
+        { x: 110, y: 22 },
+        { x: W - 110, y: 22 },
+        { x: 110, y: H - 22 },
+        { x: W - 110, y: H - 22 },
+        { x: W / 2, y: 22 },
+    ];
+    for (const lamp of lamps) {
+        const glow = ctx.createRadialGradient(lamp.x, lamp.y, 0, lamp.x, lamp.y, 90);
+        glow.addColorStop(0, 'rgba(255,220,100,0.22)');
+        glow.addColorStop(0.4, 'rgba(255,200,60,0.08)');
+        glow.addColorStop(1, 'rgba(255,200,60,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H);
+    }
 }
 
 // Utilidad

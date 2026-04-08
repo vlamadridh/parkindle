@@ -522,10 +522,12 @@ function loadLevel(lvl: Level) {
     if (!sel) return;
 
     const diffLabels: Record<string, string> = { 'fácil': 'F', 'medio': 'M', 'difícil': 'D', 'experto': 'E' };
-    for (const lvl of LEVELS) {
+    const contextIcons: Record<string, string> = { 'day': '☀️', 'night': '🌙', 'rain': '🌧', 'traffic': '🚦' };
+    for (const lvl of [...LEVELS].sort((a, b) => a.id - b.id)) {
         const opt = document.createElement('option');
         opt.value = String(lvl.id);
-        opt.textContent = `[${diffLabels[lvl.difficulty]}] Nv.${lvl.id} — ${lvl.name}`;
+        const icon = contextIcons[lvl.context ?? 'day'];
+        opt.textContent = `[${diffLabels[lvl.difficulty]}] Nv.${lvl.id} — ${lvl.name} ${icon}`;
         if (lvl.id === dailyLevel.id) opt.textContent += ' ★';
         sel.appendChild(opt);
     }

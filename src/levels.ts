@@ -2,10 +2,13 @@ export interface Vec2 { x: number; y: number; }
 export interface Rect { x: number; y: number; w: number; h: number; }
 export interface ParkingSpot { x: number; y: number; w: number; h: number; angle: number; }
 
+export type LevelContext = 'day' | 'night' | 'rain' | 'traffic';
+
 export interface Level {
     id: number;
     name: string;
     difficulty: 'fácil' | 'medio' | 'difícil' | 'experto';
+    context: LevelContext;
     carStart: { x: number; y: number; angle: number };
     parkingSpot: ParkingSpot;
     walls: Rect[];
@@ -46,6 +49,7 @@ export const LEVELS: Level[] = [
         id: 1,
         name: 'Plaza libre',
         difficulty: 'fácil',
+        context: 'day',
         carStart: { x: 400, y: 480, angle: -Math.PI / 2 },
         parkingSpot: { x: 380, y: 83, w: 50, h: 74, angle: 0 },
         walls: [...B],
@@ -66,6 +70,7 @@ export const LEVELS: Level[] = [
         id: 2,
         name: 'Aparcamiento en batería',
         difficulty: 'fácil',
+        context: 'day',
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
         // Plaza a la derecha — camino libre por la derecha (x>620)
         parkingSpot: { x: 660, y: 83, w: 50, h: 74, angle: 0 },
@@ -91,6 +96,7 @@ export const LEVELS: Level[] = [
         id: 8,
         name: 'Desvío',
         difficulty: 'fácil',
+        context: 'day',
         // Empieza izquierda abajo, plaza arriba derecha
         carStart: { x: 160, y: 490, angle: -Math.PI / 2 },
         // Plaza: x:620-682, center x:651. Coche aprox. desde y>165 hacia arriba.
@@ -118,13 +124,14 @@ export const LEVELS: Level[] = [
         id: 9,
         name: 'Patio abierto',
         difficulty: 'fácil',
+        context: 'traffic',
         carStart: { x: 600, y: 480, angle: -Math.PI / 2 },
         parkingSpot: { x: 96, y: 80, w: 50, h: 74, angle: 0 },
         walls: [
             ...B,
             // Dos pilares centrales — obligan a esquivar en lugar de ir recto
-            { x: 340, y: 310, w: 70, h: 70 },  // pilar centro-izquierda
-            { x: 510, y: 180, w: 70, h: 70 },  // pilar centro-derecha
+            { x: 347, y: 317, w: 55, h: 55 },  // pilar centro-izquierda
+            { x: 517, y: 187, w: 55, h: 55 },  // pilar centro-derecha
         ],
         parkedCars: [
             // Fila superior (hueco a la izquierda para la plaza)
@@ -148,6 +155,7 @@ export const LEVELS: Level[] = [
         id: 21,
         name: 'Callejón',
         difficulty: 'fácil',
+        context: 'night',
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
         parkingSpot: { x: 375, y: 80, w: 50, h: 74, angle: 0 },
         walls: [
@@ -157,8 +165,12 @@ export const LEVELS: Level[] = [
             { x: 460, y: 20, w: 320, h: 430 },   // muro der (deja paso hasta x:460)
             // pasillo = x:330-460 = 130px de ancho
         ],
-        parkedCars: [],
-        hint: 'El pasillo es estrecho — entra recto y aparca arriba.',
+        parkedCars: [
+            // Dos coches dentro del pasillo — obligan a zigzaguear ligeramente
+            { x: 334, y: 260, w: 52, h: 42 },  // coche izq del pasillo
+            { x: 404, y: 360, w: 52, h: 42 },  // coche der del pasillo (alternado)
+        ],
+        hint: 'Pasillo estrecho con coches — esquívalos y aparca arriba.',
     },
 
     // ── NIVEL 22: Curva larga ──────────────────────────────────────────────
@@ -166,6 +178,7 @@ export const LEVELS: Level[] = [
         id: 22,
         name: 'Curva larga',
         difficulty: 'fácil',
+        context: 'traffic',
         // Coche arriba derecha, plaza abajo izquierda
         carStart: { x: 680, y: 100, angle: Math.PI / 2 },  // mirando abajo
         parkingSpot: { x: 96, y: 438, w: 50, h: 74, angle: 0 },
@@ -176,8 +189,8 @@ export const LEVELS: Level[] = [
         ],
         parkedCars: [
             // Coches junto a la plaza (la flanquean)
-            { x: 22,  y: 430, w: 52, h: 82 },   // x:22-74, justo antes de la plaza
-            // spot x:90-152
+            { x: 30,  y: 430, w: 52, h: 82 },   // x:30-82, flanquea la plaza por la izquierda
+            // spot x:96-146
             { x: 170, y: 430, w: 52, h: 82 },
             { x: 240, y: 430, w: 52, h: 82 },
             // Coches abajo derecha
@@ -197,6 +210,7 @@ export const LEVELS: Level[] = [
         id: 3,
         name: 'Calle estrecha',
         difficulty: 'medio',
+        context: 'traffic',
         carStart: { x: 150, y: 490, angle: -Math.PI / 2 },
         // Plaza en el pasillo derecho, entre dos coches aparcados
         // Acceso: corredor x:600-780 (libre en ambos separadores)
@@ -210,10 +224,10 @@ export const LEVELS: Level[] = [
         parkedCars: [
             // Corredor derecho: flanquean la plaza
             { x: 620, y: 170, w: 52, h: 82 },   // x:620-672
-            { x: 740, y: 170, w: 38, h: 82 },   // x:740-778 (junto al borde)
-            // spot x:680-742 — aprox. desde y>322 hacia arriba
+            { x: 718, y: 170, w: 42, h: 82 },   // x:718-760 (margen respirable con el borde)
+            // spot x:686-736 — acceso desde abajo
             { x: 620, y: 360, w: 52, h: 82 },
-            { x: 740, y: 360, w: 38, h: 82 },
+            { x: 718, y: 360, w: 42, h: 82 },
         ],
         hint: 'El corredor derecho está abierto. La plaza está en el centro.',
     },
@@ -223,6 +237,7 @@ export const LEVELS: Level[] = [
         id: 4,
         name: 'Parking subterráneo',
         difficulty: 'medio',
+        context: 'rain',
         carStart: { x: 100, y: 490, angle: -Math.PI / 2 },
         // Plaza arriba derecha — hay que zigzaguear
         // Acceso: subir por izq (x<280), cruzar a x>528, subir por derecha
@@ -233,8 +248,7 @@ export const LEVELS: Level[] = [
             { x: 20,  y: 200, w: 508, h: 18 },
             // Separador inf: deja paso a la izquierda (x:20-280)
             { x: 280, y: 360, w: 500, h: 18 },
-            // Pilar vertical que une ambos separadores
-            { x: 510, y: 200, w: 18,  h: 160 },
+            // Pilar eliminado — conectar ambos sellaría la zona central
         ],
         parkedCars: [
             // Fila arriba (hueco para la plaza x:590-652)
@@ -257,6 +271,7 @@ export const LEVELS: Level[] = [
         id: 10,
         name: 'Doble hilera',
         difficulty: 'medio',
+        context: 'traffic',
         // Coche en pasillo central, plaza arriba derecha
         carStart: { x: 400, y: 480, angle: -Math.PI / 2 },
         // Plaza: x:680-742, y:55-145, center (711,100)
@@ -292,6 +307,7 @@ export const LEVELS: Level[] = [
         id: 11,
         name: 'El corredor en L',
         difficulty: 'medio',
+        context: 'rain',
         // Coche abajo derecha, plaza arriba izquierda
         // Hay que hacer una L: bajar, cruzar, subir
         carStart: { x: 660, y: 470, angle: Math.PI },  // mirando izquierda
@@ -320,6 +336,7 @@ export const LEVELS: Level[] = [
         id: 12,
         name: 'La isla',
         difficulty: 'medio',
+        context: 'night',
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
         // Plaza arriba izquierda — hay que rodear la isla central
         parkingSpot: { x: 61, y: 80, w: 50, h: 74, angle: 0 },
@@ -358,6 +375,7 @@ export const LEVELS: Level[] = [
         id: 23,
         name: 'La bifurcación',
         difficulty: 'medio',
+        context: 'rain',
         carStart: { x: 400, y: 490, angle: -Math.PI / 2 },
         // Plaza arriba — hay un muro con dos pasos, solo el izquierdo lleva
         parkingSpot: { x: 86, y: 80, w: 50, h: 74, angle: 0 },
@@ -391,6 +409,7 @@ export const LEVELS: Level[] = [
         id: 24,
         name: 'Pasillo estrecho',
         difficulty: 'medio',
+        context: 'day',
         carStart: { x: 680, y: 300, angle: Math.PI },  // derecha centro, mirando izq
         // Plaza izquierda — hay que atravesar un pasillo muy estrecho
         parkingSpot: { x: 46, y: 238, w: 50, h: 74, angle: 0 },
@@ -427,6 +446,7 @@ export const LEVELS: Level[] = [
         id: 5,
         name: 'Paralelo imposible',
         difficulty: 'difícil',
+        context: 'night',
         carStart: { x: 500, y: 300, angle: 0 },
         // Plaza paralela izquierda: w>h, el coche debe quedar vertical (angle≈±PI/2)
         parkingSpot: { x: 53, y: 230, w: 74, h: 46, angle: Math.PI / 2 },
@@ -449,6 +469,7 @@ export const LEVELS: Level[] = [
         id: 6,
         name: 'El laberinto',
         difficulty: 'difícil',
+        context: 'rain',
         carStart: { x: 690, y: 500, angle: Math.PI },
         parkingSpot: { x: 66, y: 63, w: 50, h: 74, angle: 0 },
         walls: [
@@ -475,6 +496,7 @@ export const LEVELS: Level[] = [
         id: 13,
         name: 'Solo marcha atrás',
         difficulty: 'difícil',
+        context: 'night',
         // Coche empieza mirando HACIA ABAJO — tiene que maniobrar en reversa
         carStart: { x: 400, y: 120, angle: Math.PI / 2 },
         // Plaza abajo izquierda — acceso desde y>440 (bajo la pared)
@@ -505,6 +527,7 @@ export const LEVELS: Level[] = [
         id: 14,
         name: 'El caracol',
         difficulty: 'difícil',
+        context: 'rain',
         carStart: { x: 680, y: 490, angle: Math.PI },  // abajo derecha, mirando izq
         // Plaza arriba izquierda — hay que serpentear
         parkingSpot: { x: 61, y: 63, w: 50, h: 74, angle: 0 },
@@ -514,8 +537,7 @@ export const LEVELS: Level[] = [
             { x: 180, y: 170, w: 580, h: 18 },  // gap izq: x:20-180
             // Muro interior (cortocircuita el paso, solo deja por la derecha)
             { x: 20,  y: 330, w: 580, h: 18 },  // gap der: x:600-780
-            // Pilar que conecta los dos muros por la derecha
-            { x: 600, y: 170, w: 18,  h: 160 },
+            // Pilar eliminado — conectar ambos sellaría la zona central
         ],
         parkedCars: [
             // Arriba, rodean la plaza
@@ -535,14 +557,15 @@ export const LEVELS: Level[] = [
         id: 15,
         name: 'Paralelo en calle',
         difficulty: 'difícil',
+        context: 'traffic',
         // Coche en la carretera central, plaza en el bordillo izquierdo
         carStart: { x: 580, y: 300, angle: Math.PI },  // mirando izquierda
         // Plaza paralela: w>h → coche entra horizontal (ángulo ≈ 0 ó PI)
         parkingSpot: { x: 38, y: 244, w: 74, h: 44, angle: 0 },
         walls: [
             ...B,
-            // Bordillo — separa el aparcamiento de la carretera (gap pequeño)
-            { x: 160, y: 20, w: 18, h: 580 },  // bordillo vertical
+            // Bordillo — separa el aparcamiento de la carretera (gap abajo ~100px)
+            { x: 160, y: 20, w: 18, h: 460 },  // bordillo vertical (y:20→480, gap y:480-580)
         ],
         parkedCars: [
             // Coches aparcados en el bordillo
@@ -567,7 +590,8 @@ export const LEVELS: Level[] = [
         id: 16,
         name: 'El cruce',
         difficulty: 'difícil',
-        carStart: { x: 650, y: 460, angle: -Math.PI / 2 },
+        context: 'night',
+        carStart: { x: 650, y: 465, angle: -Math.PI / 2 },
         // Plaza arriba izquierda — dos bloques crean un corredor en cruz
         // Zona abierta top-left: x:20-320, y:20-340  |  bot-right: x:480-780, y:340-580
         parkingSpot: { x: 61, y: 68, w: 50, h: 74, angle: 0 },
@@ -591,7 +615,8 @@ export const LEVELS: Level[] = [
         id: 25,
         name: 'Curva cerrada',
         difficulty: 'difícil',
-        carStart: { x: 680, y: 100, angle: Math.PI / 2 },  // arriba derecha, bajando
+        context: 'rain',
+        carStart: { x: 700, y: 100, angle: Math.PI / 2 },  // arriba derecha, bajando
         // Plaza abajo izquierda — hay que dar una vuelta completa
         parkingSpot: { x: 86, y: 428, w: 50, h: 74, angle: 0 },
         walls: [
@@ -610,7 +635,7 @@ export const LEVELS: Level[] = [
             // Arriba derecha donde empieza el coche
             { x: 560, y: 72,  w: 52, h: 82 },
             { x: 630, y: 72,  w: 52, h: 82 },
-            { x: 700, y: 72,  w: 52, h: 82 },
+            { x: 724, y: 72,  w: 52, h: 82 },  // movido de x:700 para despejar spawn x:700
         ],
         hint: 'Baja por la derecha, rodea el bloque central y aparca abajo izquierda.',
     },
@@ -620,6 +645,7 @@ export const LEVELS: Level[] = [
         id: 26,
         name: 'Barrera doble',
         difficulty: 'difícil',
+        context: 'traffic',
         carStart: { x: 390, y: 490, angle: -Math.PI / 2 },
         // Plaza arriba derecha — dos barreras con pasos alternos
         parkingSpot: { x: 646, y: 63, w: 50, h: 74, angle: 0 },
@@ -639,8 +665,8 @@ export const LEVELS: Level[] = [
             { x: 345, y: 55, w: 52, h: 82 },
             { x: 435, y: 55, w: 52, h: 82 },
             { x: 530, y: 55, w: 52, h: 82 },
-            { x: 610, y: 55, w: 52, h: 82 },
-            // spot x:640-702
+            { x: 588, y: 55, w: 52, h: 82 },
+            // spot x:646-696 (hueco libre x:640-646)
             { x: 720, y: 55, w: 52, h: 82 },
         ],
         hint: 'Pasa por la izquierda abajo, luego por la derecha arriba.',
@@ -655,6 +681,7 @@ export const LEVELS: Level[] = [
         id: 7,
         name: 'Centro comercial',
         difficulty: 'experto',
+        context: 'night',
         // Coche abajo derecha, plaza arriba izquierda
         // Ruta: subir por la derecha (gap mid), cruzar a la izquierda en zona media,
         //        subir de nuevo por la izquierda (gap top), llegar a la plaza.
@@ -667,8 +694,7 @@ export const LEVELS: Level[] = [
             { x: 160, y: 225, w: 620, h: 18 },
             // Divisor medio: x:20-640, gap der x:640-780
             { x: 20,  y: 375, w: 620, h: 18 },
-            // Pilar que une ambos por la derecha
-            { x: 640, y: 225, w: 18,  h: 150 },
+            // Pilar eliminado — conectar ambos sellaría la zona central
         ],
         parkedCars: [
             // Zona superior (y:20-225) — a la derecha de la plaza
@@ -695,6 +721,7 @@ export const LEVELS: Level[] = [
         id: 17,
         name: 'La serpiente',
         difficulty: 'experto',
+        context: 'rain',
         carStart: { x: 680, y: 490, angle: Math.PI },  // abajo derecha, mirando izq
         // Plaza arriba derecha — hay que serpentear por tres zonas
         parkingSpot: { x: 646, y: 63, w: 50, h: 74, angle: 0 },
@@ -725,6 +752,7 @@ export const LEVELS: Level[] = [
         id: 18,
         name: 'El sótano',
         difficulty: 'experto',
+        context: 'night',
         carStart: { x: 100, y: 100, angle: Math.PI / 2 },  // arriba izq, mirando abajo
         // Plaza abajo derecha — ruta compleja con tres zonas
         parkingSpot: { x: 646, y: 428, w: 50, h: 74, angle: 0 },
@@ -734,8 +762,7 @@ export const LEVELS: Level[] = [
             { x: 180, y: 200, w: 600, h: 18 },
             // Barrera media: deja paso derecho (x:620-780)
             { x: 20,  y: 370, w: 600, h: 18 },
-            // Pilar vertical conectando las barreras
-            { x: 620, y: 200, w: 18,  h: 170 },
+            // Pilar eliminado — conectar ambos sellaría la zona central
         ],
         parkedCars: [
             // Zona inferior derecha (flanquean la plaza)
@@ -759,6 +786,7 @@ export const LEVELS: Level[] = [
         id: 19,
         name: 'Paralelo extremo',
         difficulty: 'experto',
+        context: 'traffic',
         // Coche en el carril, debe hacer paralelo en hueco muy justo
         carStart: { x: 600, y: 290, angle: Math.PI },  // mirando izquierda
         // Plaza paralela estrecha — coche debe quedar horizontal
@@ -795,6 +823,7 @@ export const LEVELS: Level[] = [
         id: 20,
         name: 'El cuadrado',
         difficulty: 'experto',
+        context: 'night',
         // Coche en el interior del cuadrado, plaza en el exterior (hay que salir)
         carStart: { x: 400, y: 340, angle: 0 },  // interior, mirando derecha
         // Plaza fuera del cuadrado — arriba izquierda
@@ -829,6 +858,7 @@ export const LEVELS: Level[] = [
         id: 27,
         name: 'El maestro',
         difficulty: 'experto',
+        context: 'rain',
         carStart: { x: 700, y: 490, angle: Math.PI },  // abajo derecha, izquierda
         // Plaza arriba derecha — ruta larga en Z
         parkingSpot: { x: 646, y: 63, w: 50, h: 74, angle: 0 },
@@ -840,9 +870,7 @@ export const LEVELS: Level[] = [
             { x: 300, y: 320, w: 480, h: 18 },
             // Barrera 3: x:20-520, gap der x:520-780
             { x: 20,  y: 450, w: 500, h: 18 },
-            // Pilares de conexión
-            { x: 480, y: 170, w: 18,  h: 150 },  // pilar der barrera 1-2
-            { x: 300, y: 320, w: 18,  h: 130 },  // pilar izq barrera 2-3
+            // Pilares eliminados — conectar barreras sellaría las zonas intermedias
         ],
         parkedCars: [
             // Zona superior (y<170): flanquean la plaza
